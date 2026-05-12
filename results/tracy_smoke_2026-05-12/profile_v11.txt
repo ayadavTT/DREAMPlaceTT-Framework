@@ -1,0 +1,98 @@
+=== Smoke test, grid 2048, 1.5M synthetic cells ===
+=== AICLK = 1350 MHz; 110 worker Tensix cores ===
+
+[profile_v11] CSV: /tmp/profile_log_device.csv
+[profile_v11] Device clock: 1350 MHz
+[profile_v11] Loaded 228214 START/END events
+[profile_v11] Paired into 114107 zone invocations
+
+  Zone                   RISC      cores  invokes  median(µs)    max(µs)  max/med    slowest core
+  ────────────────────── ────────  ───── ──────── ─────────── ────────── ──────── ───────────────
+  BRISC-FW               BRISC       110     2924     3627.45   12388.90     3.42           (1,2)
+  BRISC-KERNEL           BRISC       110     2924     3328.09   12122.67     3.64           (1,2)
+  TRISC-FW               TRISC_2     110     2530     2985.60    5130.22     1.72         (15,11)
+  TRISC-FW               TRISC_1     110     2530     2985.48    5130.15     1.72         (15,11)
+  TRISC-FW               TRISC_0     110     2530     2985.02    5129.28     1.72         (15,11)
+  TRISC-KERNEL           TRISC_1     110     2530     2979.90    5110.48     1.71         (15,11)
+  TRISC-KERNEL           TRISC_2     110     2530     2979.91    5109.89     1.71         (15,11)
+  TRISC-KERNEL           TRISC_0     110     2530     2979.37    5109.41     1.71         (15,11)
+  NCRISC-FW              NCRISC      110     2860     3157.59    4968.93     1.57         (15,11)
+  NCRISC-KERNEL          NCRISC      110     2860     3153.50    4952.73     1.57         (15,11)
+  V6-NORM                BRISC        62       62     3306.13    3307.46     1.00           (4,2)
+  V11A-MERGE             BRISC       110      330     1486.00    2303.12     1.55          (15,2)
+  V11A-ACC               BRISC       110     2310      263.95    2285.44     8.66           (1,2)  ← imbalance
+  V11A-SCALE             BRISC       110      330     2194.52    2264.94     1.03           (1,2)
+  V4N-SORT               NCRISC      110      110     1368.19    2016.25     1.47           (4,6)
+  V11N-ACC               NCRISC      110     2310      234.10    1999.16     8.54           (1,2)  ← imbalance
+  V6-DATA-ACCUM          BRISC        15      174       27.26    1988.67    72.96           (1,2)  ← imbalance
+  V11-ROUTE              NCRISC      110     2930     1818.86    1924.14     1.06           (4,6)
+  V11B-ROUTE             BRISC       110     2930     1226.25    1336.17     1.09           (5,6)
+  V4C-SFPU-TILE          TRISC_1     110     7325     1019.14    1081.59     1.06           (4,6)
+  V4C-SFPU-TILE          TRISC_2     110     7325     1019.11    1081.57     1.06           (4,6)
+  V4C-SFPU-TILE          TRISC_0     110     7325     1016.08    1079.45     1.06           (4,6)
+  V11B-FINAL-FLUSH       BRISC       110      220      535.08     670.81     1.25           (5,7)
+  V11H-COUNT             NCRISC      110     2930      641.29     660.82     1.03           (4,6)
+  V11-FINAL-FLUSH        NCRISC      110      220      454.04     578.53     1.27          (12,7)
+  V4N-CONTRIBS           NCRISC      110     1465      361.16     453.77     1.26           (4,6)
+  V6-INIT                BRISC        64       64      242.76     242.76     1.00           (1,7)
+  V11A-ZERO              BRISC       110      330      140.37     144.17     1.03           (2,4)
+  V11N-ZERO              NCRISC      110      330      140.37     144.16     1.03          (13,3)
+  V11-MAP-LOAD           NCRISC      110      220       75.55     134.58     1.78         (15,10)
+  V11A-DENSITY-WRITE     BRISC       110      330       46.38      91.62     1.98           (2,5)
+  V6-WRITE               BRISC        62       62       45.54      90.29     1.98           (2,4)
+  V11N-HDR-READ          NCRISC      110      330       18.11      52.42     2.89          (14,3)
+  V11A-HDR-READ-ALL      BRISC       110      330       24.37      45.66     1.87           (3,2)
+  V4N-CB-WAIT            NCRISC      110     1465       38.69      39.04     1.01           (5,2)
+  V11-CB-WAIT            NCRISC      110     2930       38.86      38.92     1.00          (15,7)
+  V11B-HDR-WRITE         BRISC       110      220       29.89      31.07     1.04          (3,10)
+  V11-HDR-WRITE          NCRISC      110      220       30.61      30.66     1.00           (4,3)
+  V11N-DATA-READ         NCRISC      110     2310        3.31       7.45     2.25          (14,9)
+  V4N-DRAM-WRITE         NCRISC      110      110        3.08       5.77     1.87          (4,11)
+  V4C-CB-WAIT            TRISC_0     110     7325        2.57       4.41     1.72          (15,9)
+  V11A-DATA-READ         BRISC       110     2310        1.84       4.07     2.21           (1,2)
+  V11N-LOOKUP-LOAD       NCRISC      110      330        2.31       4.00     1.73          (15,2)
+  V11A-LOOKUP-LOAD       BRISC       110      330        2.22       3.70     1.66           (1,5)
+  V4R-DRAM-READ          BRISC       110     4395        1.10       1.40     1.27          (13,2)
+  V11B-DRAM-READ         BRISC       110     2930        0.65       0.71     1.09          (15,7)
+  V11H-WRITE             NCRISC      110      220        0.52       0.61     1.17         (12,11)
+  V6-HDR-READ            BRISC        64     6992        0.36       0.37     1.04          (12,7)
+  V11N-SIGNAL            NCRISC      110      330        0.05       0.05     1.05           (4,4)
+  V4C-CB-WAIT            TRISC_2     110     7325        0.02       0.02     1.03          (12,8)
+  V4C-CB-WAIT            TRISC_1     110     7325        0.02       0.02     1.04           (5,3)
+
+[profile_v11] Hint: re-run with --zone <ZONE> --per-core to see per-core distribution for a specific zone.
+
+=== Per-core distribution: V11A-ACC ===
+[profile_v11] CSV: /tmp/profile_log_device.csv
+[profile_v11] Device clock: 1350 MHz
+[profile_v11] Loaded 228214 START/END events
+[profile_v11] Paired into 114107 zone invocations
+
+  Zone                   RISC      cores  invokes  median(µs)    max(µs)  max/med    slowest core
+  ────────────────────── ────────  ───── ──────── ─────────── ────────── ──────── ───────────────
+  V11A-ACC               BRISC       110     2310      263.95    2285.44     8.66           (1,2)  ← imbalance
+
+  Zone V11A-ACC on BRISC: 110 cores
+     rank   core(x,y)    mean(µs)
+        0  (  1,  2)     2285.44
+        1  ( 11,  2)      404.88
+        2  ( 14,  3)      349.24
+        3  (  2,  2)      347.73
+        4  (  4,  2)      282.95
+        5  ( 14,  2)      279.75
+        6  ( 15,  2)      277.52
+        7  ( 15,  3)      275.67
+        8  ( 12,  3)      274.02
+        9  ( 13,  3)      273.98
+       10  ( 14,  8)      273.03
+       11  (  6,  3)      273.02
+       12  (  3,  3)      272.93
+       13  (  4,  4)      271.98
+       14  ( 12,  2)      271.81
+       15  ( 14,  6)      271.71
+       16  (  2,  4)      271.13
+       17  ( 11,  3)      270.69
+       18  ( 14, 10)      270.28
+       19  (  3,  2)      269.45
+    ... and 90 more cores
+    median: 263.95 µs  |  max: 2285.44 µs

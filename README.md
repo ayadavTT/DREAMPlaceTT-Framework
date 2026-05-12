@@ -96,6 +96,8 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design.
 | [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | …something doesn't work. Or you're picking up the convergence work. |
 | [docs/V11_PHASE3_HANDOFF.md](docs/V11_PHASE3_HANDOFF.md) | …you're optimizing V11 kernel perf further. |
 | [docs/PROFILING.md](docs/PROFILING.md) | …you want per-zone timing breakdown (TT-Tracy device profiler). |
+| [docs/CONSTRAINTS.md](docs/CONSTRAINTS.md) | …you're proposing a new V11 variant — the design contract and Tensix capability reference. |
+| [docs/PERFORMANCE_MODEL.md](docs/PERFORMANCE_MODEL.md) | …you want per-unit latency / NOC bandwidth / DRAM cost numbers for back-of-envelope kernel-design predictions, and the TT-Tracy recipe to verify them. |
 | [docs/DREAMPLACE_TT_ARCHITECTURE.md](docs/DREAMPLACE_TT_ARCHITECTURE.md) | …you want the full design rationale + decision log. |
 | [docs/BLACKHOLE_HW_SPEC.md](docs/BLACKHOLE_HW_SPEC.md) | …you need TT Blackhole hardware specs. |
 | [results/README.md](results/README.md) | …you want the actual numbers, by benchmark. |
