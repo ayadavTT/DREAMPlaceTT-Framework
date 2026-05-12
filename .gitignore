@@ -1,0 +1,38 @@
+# build artifacts
+host/build/
+**/build_ttnn/
+**/__pycache__/
+*.pyc
+*.pyo
+*.so
+*.o
+*.obj
+
+# results scratch (the curated snapshots in results/sweep_a1_bb3_report/
+# and results/sweep_v2_final/ are intentionally tracked)
+results/sweep_latest/
+results/dbg_*/
+results/tmp_*/
+
+# debug dumps
+*.bin
+!results/**/*.bin  # if any small fixture dumps end up tracked
+
+# editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*~
+
+# Python venv (DREAMPlace's dp_env should be a submodule artifact, not committed)
+dp_env/
+*.egg-info/
+
+# tt-metal / DREAMPlace are managed as git submodules, never as inline trees
+# (the local checkout uses symlinks; commit the symlinks if you want, or replace
+# with `git submodule add` before pushing).
+
+# external trees managed outside the repo
+tt-metal/
+DREAMPlace/
