@@ -139,14 +139,6 @@ These are strong preferences but can be violated with justification.
 
 Every `EnqueueMeshWorkload(cq, …); Finish(cq);` pair costs ~3–5 ms of host↔device round trip. V11 collapsed scatter+accum+reduce into 2 Programs (scatter + accum) by using on-chip NOC semaphores for inter-phase sync — see `docs/V11_PHASE3_HANDOFF.md`. **Prefer fewer Program launches** with on-chip sync over more launches with host barriers.
 
-### 3.3 Keep DREAMPlace untouched
-
-We monkey-patch exactly two things at Python import time:
-- `dreamplace.electric_potential.ElectricPotentialFunction.forward` (so each iter routes through the TT server)
-- `EvalMetrics.EvalMetrics.evaluate` (so we log per-iter HPWL/overflow)
-
-**Don't add more patches.** If you need new behavior, push it server-side. DREAMPlace upgrades upstream periodically; the smaller our patch surface, the easier the bump.
-
 ### 3.4 Build artifacts stay out of the repo
 
 Server binary is rebuilt from source via `scripts/build_server.sh`. Kernels are JIT-compiled on server startup from source files in `kernels/`. No precompiled `.o` or `.so` should end up tracked.
@@ -276,12 +268,6 @@ Each Tensix worker core has **three RISC processors** and **a compute unit** sha
 
 ---
 
-## 5.10 Throughput & latency numbers (for back-of-envelope prediction)
-
-Every constraint table above is qualitative. For **quantitative** numbers — per-RISC scalar throughput, SFPU lanes/cycle, NOC GB/s, DRAM bandwidth, host-dispatch cost, and a worked example of how to predict iter wall time from a kernel design before you build it — see [PERFORMANCE_MODEL.md](PERFORMANCE_MODEL.md).
-
-That doc also has the **TT-Tracy recipe** for verifying your predictions afterwards and the **bar to beat CPU** (3× CPU 8T scatter+gather on all 4 standard benchmarks).
-
 ## 6. Acceptance tests for any new V11 variant
 
 A new design needs to clear these bars before replacing the current V11 path:
@@ -292,7 +278,6 @@ A new design needs to clear these bars before replacing the current V11 path:
 4. **L1 footprint**: prints `v11_ac_scratch = <KB>` at startup; must be `< 1500 KB` on `grid 2048, n_owned_max ≤ 40`.
 5. **Compile**: builds inside the standard container without changing the global `CMakeLists.txt` or `clang` version.
 6. **End-to-end perf**: scatter+gather wall time on `adaptec1_2048` is `≤ 1.2 × V11-current` (no major perf regression).
-7. **3× CPU target**: per [PERFORMANCE_MODEL.md](PERFORMANCE_MODEL.md) §6, the new design's *predicted* scatter+gather time (computed with the framework in that doc) must be ≤ ⅓ of CPU 8T baseline on all 4 standard benchmarks. Predicted vs measured must agree within 2× — verified with `tools/profile_v11.py`.
 
 ---
 
@@ -309,7 +294,7 @@ These are the things to think about when proposing the next variant:
 3. **Is sharding salvageable?**
    - The mechanism exists but needs the semaphore leak fixed. Worth ~1 day of refactor.
 4. **Can SFPU do the accumulate?**
-   - Per-tile dense MAC after a bucket-sort. We don't have a bucket-sort kernel for tuples yet. Probably 3-day effort.
+   - Per-tile dense MAC after a bucket-sort. We don't have a bucket-sort kernel for tuples yet.
 5. **What about gathering forces, not just scattering density?**
    - The framework offloads scatter+DCT to TT but does gather on CPU. Moving gather to TT would unlock another ~20 % iteration speedup. See `docs/FAST_SCATTER_GATHER_PLAN.md` for prior thinking.
 
