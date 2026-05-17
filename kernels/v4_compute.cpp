@@ -61,6 +61,12 @@
 #ifndef V4_MAX_OVERLAP
 #define V4_MAX_OVERLAP 8
 #endif
+// G-PRESCALE: optional per-output scale (host injects sqrt(inv_bin_area) in
+// V11 mode so area = ox*oy is pre-multiplied by inv_bin_area at scatter
+// time; V11A-SCALE in gather then becomes a no-op).
+#ifndef V4_OX_OY_SCALE_F
+#define V4_OX_OY_SCALE_F 1.0f
+#endif
 
 // ── SFPU face functions — inside #ifdef TRISC_MATH ──────────────────────────
 #ifdef TRISC_MATH
@@ -71,6 +77,7 @@ static constexpr float IBSX = V4_INV_BSX_F;
 static constexpr float IBSY = V4_INV_BSY_F;
 static constexpr float XL   = V4_XL_F;
 static constexpr float YL   = V4_YL_F;
+static constexpr float OX_OY_SCALE = V4_OX_OY_SCALE_F;
 
 static constexpr uint32_t N = 32;
 static constexpr float BIG  = 8388608.0f;  // 2^23
@@ -141,7 +148,7 @@ static void face_overlap_x(uint32_t d_px, uint32_t d_sx, uint32_t, uint32_t d_ou
         v_if (t < hi) { hi = t; } v_endif;          // hi = min(cx+csx, bin_right)
         hi = hi - lo;
         v_if (hi < sfpi::vConst0) { hi = sfpi::vConst0; } v_endif;
-        dst_reg[d_out * N + i] = hi;
+        dst_reg[d_out * N + i] = hi * OX_OY_SCALE;
     }
 }
 
@@ -164,7 +171,7 @@ static void face_overlap_y(uint32_t d_py, uint32_t d_sy, uint32_t, uint32_t d_ou
         v_if (t < hi) { hi = t; } v_endif;
         hi = hi - lo;
         v_if (hi < sfpi::vConst0) { hi = sfpi::vConst0; } v_endif;
-        dst_reg[d_out * N + i] = hi;
+        dst_reg[d_out * N + i] = hi * OX_OY_SCALE;
     }
 }
 

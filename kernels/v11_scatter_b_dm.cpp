@@ -56,7 +56,7 @@
 
 constexpr uint32_t V11_MAX_OVERLAP = 8u;
 constexpr uint32_t TILE_ELEMS      = 1024u;
-constexpr uint32_t MAX_IN_FLIGHT   = 64u;  // matches v11_scatter_dm.cpp
+constexpr uint32_t MAX_IN_FLIGHT   = 64u;  // matches v11_scatter_dm.cpp; ≤ max_per_page/2
 constexpr uint32_t V11_PAGE_HDR_BYTES = 64u;
 constexpr uint32_t CB_SCRATCH = tt::CBIndex::c_24;
 constexpr uint32_t CB_PX = 0u;
@@ -97,6 +97,8 @@ void kernel_main() {
     const uint32_t shared_state_off   = get_arg_val<uint32_t>(20);
     const uint32_t brisc_state_off    = get_arg_val<uint32_t>(21);
     const uint32_t tables_ready_sem_id= get_arg_val<uint32_t>(22);
+    const uint32_t drop_dram          = get_arg_val<uint32_t>(23);
+    uint32_t total_drops              = 0;
     (void)M_tiles;
 
     // ── Setup: locate L1 regions for scatter (interleaved with reader) ────
@@ -156,33 +158,8 @@ void kernel_main() {
         if (cnt == 0u) return;
         V11Contrib* arr = &staging[recv * MAX_IN_FLIGHT];
 
-        // Insertion sort by (bx << 16 | by).
-        for (uint32_t i = 1; i < cnt; ++i) {
-            V11Contrib v = arr[i];
-            uint32_t key_v = ((uint32_t)v.bx << 16) | (uint32_t)v.by;
-            int32_t j = (int32_t)i - 1;
-            while (j >= 0) {
-                uint32_t key_j = ((uint32_t)arr[j].bx << 16) | (uint32_t)arr[j].by;
-                if (key_j <= key_v) break;
-                arr[j + 1] = arr[j];
-                --j;
-            }
-            arr[j + 1] = v;
-        }
-
-        // Combine adjacent equal-key entries.
-        uint32_t w = 0;
-        for (uint32_t r = 0; r < cnt; ++r) {
-            if (w > 0 && arr[w - 1].bx == arr[r].bx && arr[w - 1].by == arr[r].by) {
-                arr[w - 1].area += arr[r].area;
-            } else {
-                arr[w] = arr[r];
-                ++w;
-            }
-        }
-        cnt = w;
-
-        // Pad to multiple of 4 (NOC 32-byte alignment).
+        // A2: Skip writer-side sort + dedup. Gather atomic-add is commutative
+        // (mirror of v11_scatter_dm.cpp). Only NOC alignment padding remains.
         uint32_t cnt_padded = (cnt + 3u) & ~3u;
         for (uint32_t i = cnt; i < cnt_padded; ++i) {
             arr[i].bx = 0;
@@ -197,11 +174,14 @@ void kernel_main() {
 
         uint32_t already = dram_offset_tuples[recv];
         if (already >= brisc_cap_tuples) {
+            total_drops += cnt;
             staging_count[recv] = 0u;
             return;
         }
         if (already + cnt > brisc_cap_tuples) {
-            cnt = brisc_cap_tuples - already;
+            uint32_t kept = brisc_cap_tuples - already;
+            total_drops += cnt - kept;
+            cnt = kept;
         }
         uint64_t page_base = rgen.get_noc_addr(my_writer_id * nc_all + recv);
         uint64_t dst = page_base + (uint64_t)V11_PAGE_HDR_BYTES
@@ -270,8 +250,44 @@ void kernel_main() {
         {
             DeviceZoneScopedN("V11B-ROUTE");
             for (uint32_t ci = TILE_ELEMS / 2u; ci < TILE_ELEMS; ++ci) {
-                int bxl = (int)bxl_data[ci];
-                int byl = (int)byl_data[ci];
+                int bxl_i = (int)bxl_data[ci];
+                int byl_i = (int)byl_data[ci];
+                if (bxl_i < 0) bxl_i = 0;
+                if (byl_i < 0) byl_i = 0;
+                uint32_t bxl_u = (uint32_t)bxl_i;
+                uint32_t byl_u = (uint32_t)byl_i;
+
+                // Hoist the 1-4 owner+shard lookups per cell (mirrors v11_scatter_dm.cpp).
+                uint32_t tile_x_lo = bxl_u >> 5;
+                uint32_t tile_x_hi = (bxl_u + 7u) >> 5;
+                uint32_t tile_y_lo = byl_u >> 5;
+                uint32_t tile_y_hi = (byl_u + 7u) >> 5;
+                if (tile_x_lo >= M_tiles) continue;
+                if (tile_y_lo >= N_tiles) continue;
+                if (tile_x_hi >= M_tiles) tile_x_hi = tile_x_lo;
+                if (tile_y_hi >= N_tiles) tile_y_hi = tile_y_lo;
+                bool x_split = (tile_x_hi != tile_x_lo);
+                bool y_split = (tile_y_hi != tile_y_lo);
+
+                uint32_t map_ll = tile_x_lo * N_tiles + tile_y_lo;
+                uint16_t prim_ll = tile_to_core[map_ll];
+                uint16_t prim_lh = y_split ? tile_to_core[tile_x_lo * N_tiles + tile_y_hi]
+                                           : prim_ll;
+                uint16_t prim_hl = x_split ? tile_to_core[tile_x_hi * N_tiles + tile_y_lo]
+                                           : prim_ll;
+                uint16_t prim_hh = (x_split && y_split)
+                                    ? tile_to_core[tile_x_hi * N_tiles + tile_y_hi]
+                                    : (x_split ? prim_hl : prim_lh);
+
+                const uint8_t* sh_ll = shard_table + map_ll * 16u;
+                const uint8_t* sh_lh = y_split ? (shard_table + (tile_x_lo * N_tiles + tile_y_hi) * 16u)
+                                               : sh_ll;
+                const uint8_t* sh_hl = x_split ? (shard_table + (tile_x_hi * N_tiles + tile_y_lo) * 16u)
+                                               : sh_ll;
+                const uint8_t* sh_hh = (x_split && y_split)
+                                        ? (shard_table + (tile_x_hi * N_tiles + tile_y_hi) * 16u)
+                                        : (x_split ? sh_hl : sh_lh);
+
                 uint32_t zero_streak_j = 0;
                 for (uint32_t j = 0; j < V11_MAX_OVERLAP; ++j) {
                     float ox_j = ox_data[j][ci];
@@ -280,13 +296,9 @@ void kernel_main() {
                         continue;
                     }
                     zero_streak_j = 0;
-                    int bx_s = bxl + (int)j;
-                    if (bx_s < 0) continue;
-                    uint32_t bx_val = (uint32_t)bx_s;
+                    uint32_t bx_val = bxl_u + j;
                     if (bx_val >= nbx) continue;
-                    uint32_t tile_x = bx_val >> 5;
-                    if (tile_x >= M_tiles) continue;
-                    uint32_t tile_x_row = tile_x * N_tiles;
+                    bool x_high = x_split && ((bx_val >> 5) == tile_x_hi);
 
                     uint32_t zero_streak_k = 0;
                     for (uint32_t k = 0; k < V11_MAX_OVERLAP; ++k) {
@@ -296,18 +308,17 @@ void kernel_main() {
                             continue;
                         }
                         zero_streak_k = 0;
-                        int by_s = byl + (int)k;
-                        if (by_s < 0) continue;
-                        uint32_t by_val = (uint32_t)by_s;
+                        uint32_t by_val = byl_u + k;
                         if (by_val >= nby) continue;
-                        uint32_t tile_y = by_val >> 5;
-                        if (tile_y >= N_tiles) continue;
+                        bool y_high = y_split && ((by_val >> 5) == tile_y_hi);
 
-                        uint32_t map_idx = tile_x_row + tile_y;
-                        uint32_t primary = (uint32_t)tile_to_core[map_idx];
+                        uint16_t prim16 = x_high ? (y_high ? prim_hh : prim_hl)
+                                                 : (y_high ? prim_lh : prim_ll);
+                        const uint8_t* sh = x_high ? (y_high ? sh_hh : sh_hl)
+                                                   : (y_high ? sh_lh : sh_ll);
+                        uint32_t primary = (uint32_t)prim16;
                         if (primary >= nc_all) continue;
 
-                        const uint8_t* sh = shard_table + map_idx * 16u;
                         uint32_t K = (uint32_t)sh[0];
                         uint32_t owner = (K <= 1u) ? primary
                                        : ((emit_counter % K) == 0u ? primary
@@ -361,5 +372,15 @@ void kernel_main() {
                             page_base + 32u, 32u);
             noc_async_write_barrier();
         }
+    }
+
+    // ── Drop-counter: BRISC uses slot (my_writer_id + nc_all) so it does
+    // not collide with NCRISC (which uses slot my_writer_id).
+    {
+        const InterleavedAddrGen<true> dgen = {
+            .bank_base_address = drop_dram,
+            .page_size = 32u,
+        };
+        noc_inline_dw_write(dgen.get_noc_addr(my_writer_id + nc_all), total_drops);
     }
 }

@@ -122,6 +122,12 @@ void kernel_main() {
     const uint32_t nc_split          = get_arg_val<uint32_t>(20);
     const uint32_t merge_sem_id      = get_arg_val<uint32_t>(21);
     // args 22/23 (my_noc_x/y) unused on BRISC; consumed by NCRISC.
+    // G-PMERGE: BRISC signals brisc_acc_done after V11A-ACC; NCRISC then helps
+    // with the lower half of the merge and signals ncrisc_half_merge_done.
+    const uint32_t brisc_acc_done_sem_id        = get_arg_val<uint32_t>(24);
+    const uint32_t ncrisc_half_merge_done_sem_id = get_arg_val<uint32_t>(25);
+    const uint32_t my_noc_x_b = get_arg_val<uint32_t>(22);
+    const uint32_t my_noc_y_b = get_arg_val<uint32_t>(23);
 
     const uint32_t n_total = n_primary + n_shard;
 
@@ -276,19 +282,34 @@ void kernel_main() {
         }
     }
 
-    // ── Merge: wait for NCRISC to finish, then sum dense_n into dense_b ──
+    // ── G-PMERGE: signal BRISC-done; wait for NCRISC-done; do upper half ──
+    // NCRISC will do the lower half in parallel. Both halves disjoint in L1.
     {
         DeviceZoneScopedN("V11A-MERGE");
+        // 1) Tell NCRISC that dense_b is settled and safe to read/write.
+        {
+            uint32_t bsem_off = (uint32_t)get_semaphore(brisc_acc_done_sem_id);
+            noc_semaphore_inc(get_noc_addr(my_noc_x_b, my_noc_y_b, bsem_off), 1u);
+        }
+        // 2) Wait for NCRISC's V11N-ACC done.
         volatile tt_l1_ptr uint32_t* mptr =
             reinterpret_cast<volatile tt_l1_ptr uint32_t*>(get_semaphore(merge_sem_id));
         noc_semaphore_wait(mptr, 1u);
-        noc_semaphore_set(mptr, 0u);  // reset for next launch
+        noc_semaphore_set(mptr, 0u);
+        // 3) Do BRISC's half = upper half [H..total).
         const uint32_t total_floats = n_total * TILE_FLOATS;
-        for (uint32_t i = 0; i < total_floats; ++i) dense[i] += dense_n[i];
+        const uint32_t H = total_floats >> 1;  // split point (lower half goes to NCRISC)
+        for (uint32_t i = H; i < total_floats; ++i) dense[i] += dense_n[i];
+        // 4) Wait for NCRISC's lower-half merge to complete.
+        volatile tt_l1_ptr uint32_t* hptr =
+            reinterpret_cast<volatile tt_l1_ptr uint32_t*>(get_semaphore(ncrisc_half_merge_done_sem_id));
+        noc_semaphore_wait(hptr, 1u);
+        noc_semaphore_set(hptr, 0u);
     }
 
     // ── Phase A: shard owners write their dense slot to srb + signal primary
-    const uint32_t hot_quad_base   = 24u + n_primary;
+    // G-PMERGE: hot/shard arg indices shifted +2 (sem args occupy 24,25).
+    const uint32_t hot_quad_base   = 26u + n_primary;
     const uint32_t shard_quint_base = hot_quad_base + 4u * n_primary_hot;
 
     if (n_shard > 0u) {
@@ -347,12 +368,11 @@ void kernel_main() {
         }
     }
 
-    // ── Phase C: scale primary tiles by inv_bin_area ──────────────────────
-    if (n_primary > 0u) {
-        DeviceZoneScopedN("V11A-SCALE");
-        const uint32_t total_floats = n_primary * TILE_FLOATS;
-        for (uint32_t i = 0; i < total_floats; ++i) dense[i] *= inv_bin_area;
-    }
+    // G-PRESCALE: V11A-SCALE removed. v4_compute pre-multiplies ox and oy
+    // outputs by sqrt(inv_bin_area), so area = ox*oy is already pre-scaled
+    // by inv_bin_area at scatter time. (void)inv_bin_area silences the
+    // unused-variable warning kept here for the runtime arg contract.
+    (void)inv_bin_area;
 
     // ── Phase C: write primary tiles to density_buf ───────────────────────
     if (n_primary > 0u) {
@@ -362,7 +382,7 @@ void kernel_main() {
             .page_size         = density_pgsz,
         };
         for (uint32_t local = 0; local < n_primary; ++local) {
-            uint32_t tile_idx = get_arg_val<uint32_t>(24u + local);
+            uint32_t tile_idx = get_arg_val<uint32_t>(26u + local);  // G-PMERGE: +2 for sem args
             uint32_t tile_x   = tile_idx / N_tiles;
             uint32_t tile_y   = tile_idx % N_tiles;
             for (uint32_t bxw = 0; bxw < 32u; ++bxw) {

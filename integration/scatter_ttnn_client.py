@@ -226,7 +226,11 @@ class ScatterTTNNClient:
         soa_padded   = ((self.nc_max + 1023) // 1024) * 1024
         pos_bytes    = soa_padded * 4          # float32
         field_bytes  = self.M * self.N * 4
-        total_size   = _SHM_HEADER_SIZE + 4 * pos_bytes + 2 * field_bytes
+        # Layout adds one extra field-sized slot (M*N float32) for
+        # initial_density_map_normalized so the server can fold fixed-terminal
+        # density into density_flat BEFORE the TT DCT. Required for TT-DCT
+        # convergence (when CPU_DCT=0). The slot is written once by the client.
+        total_size   = _SHM_HEADER_SIZE + 4 * pos_bytes + 3 * field_bytes
 
         self._shm_fd = os.open(self.shm_path,
                                os.O_RDWR | os.O_CREAT | os.O_TRUNC, 0o666)
@@ -254,6 +258,11 @@ class ScatterTTNNClient:
                                   buffer=self._mm, offset=off)
         off += field_bytes
         self._shm_fy = np.ndarray((self.M, self.N), dtype=np.float32,
+                                  buffer=self._mm, offset=off)
+        off += field_bytes
+        # initial_density_map_normalized (= initial_density_map / bin_area).
+        # Written once by the client; consumed by the server before the TT DCT.
+        self._shm_id = np.ndarray((self.M, self.N), dtype=np.float32,
                                   buffer=self._mm, offset=off)
 
         # Zero the header state word so server starts in IDLE
@@ -370,7 +379,7 @@ class ScatterTTNNClient:
 
         print("[scatter_ttnn] Waiting for ready.flag (JIT ~60 s on cold cache)…",
               flush=True)
-        deadline = time.monotonic() + 300
+        deadline = time.monotonic() + 600
         while not os.path.exists(self.ready_flag):
             if time.monotonic() > deadline:
                 raise TimeoutError("Timeout waiting for scatter_ttnn server ready.flag")
@@ -773,6 +782,17 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
             _client.xh, _client.yh = float(xh), float(yh)
             _client.M, _client.N   = int(num_bins_x), int(num_bins_y)
             _client.start(nc_actual=nc_send)
+
+        # Write initial_density_map (already normalized by bin_area) into the
+        # shm slot ONCE. The server reads it and folds it into density_flat
+        # before the TT DCT — required for convergence when CPU_DCT=0 because
+        # the V11 scatter pipeline only emits movable+filler density. The
+        # CPU_DCT=1 path still does its own add-back below.
+        if not getattr(_client, "_id_uploaded", False):
+            bin_area_local = float(bin_size_x) * float(bin_size_y)
+            _id_np = (initial_density_map / bin_area_local).detach().cpu().numpy().astype(_np.float32)
+            _client._shm_id[:] = _id_np
+            _client._id_uploaded = True
 
         field_x, field_y, timing = _client.call(px, py, sx, sy)
 

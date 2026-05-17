@@ -76,6 +76,10 @@ void kernel_main() {
     const uint32_t merge_sem_id      = get_arg_val<uint32_t>(21);
     const uint32_t my_noc_x          = get_arg_val<uint32_t>(22);
     const uint32_t my_noc_y          = get_arg_val<uint32_t>(23);
+    // G-PMERGE: wait for BRISC's ACC done before merging dense_n into the
+    // lower half of dense_b; signal when our half is complete.
+    const uint32_t brisc_acc_done_sem_id        = get_arg_val<uint32_t>(24);
+    const uint32_t ncrisc_half_merge_done_sem_id = get_arg_val<uint32_t>(25);
 
     const uint32_t n_total = n_primary + n_shard;
 
@@ -215,15 +219,30 @@ void kernel_main() {
         }
     }
 
-    // ── Done. Drain any in-flight NOC ops (none expected) and signal BRISC. ─
-    // The semaphore inc itself is a NOC op; the NOC orders writes from the
-    // same source, so all CPU stores to dense_n that happened BEFORE this
-    // increment will be visible to BRISC's reads in dense_n. (CPU stores hit
-    // L1 SRAM directly and are visible to other RISCs on the same core within
-    // a few cycles — well before NOC delivery latency.)
+    // ── Signal BRISC that V11N-ACC is done (dense_n is final) ────────────
     {
         DeviceZoneScopedN("V11N-SIGNAL");
         uint32_t sem_off = (uint32_t)get_semaphore(merge_sem_id);
+        noc_semaphore_inc(get_noc_addr(my_noc_x, my_noc_y, sem_off), 1u);
+    }
+
+    // ── G-PMERGE: wait for BRISC's V11A-ACC done, then merge LOWER HALF of
+    // dense_n into dense_b. BRISC will merge the upper half in parallel.
+    {
+        DeviceZoneScopedN("V11N-MERGE-HALF");
+        volatile tt_l1_ptr uint32_t* bptr =
+            reinterpret_cast<volatile tt_l1_ptr uint32_t*>(get_semaphore(brisc_acc_done_sem_id));
+        noc_semaphore_wait(bptr, 1u);
+        noc_semaphore_set(bptr, 0u);
+        const uint32_t total_floats = n_total * TILE_FLOATS;
+        const uint32_t H = total_floats >> 1;
+        for (uint32_t i = 0; i < H; ++i) dense_b[i] += dense_n[i];
+    }
+
+    // ── Signal BRISC that NCRISC's half of the merge is complete. ─────────
+    {
+        DeviceZoneScopedN("V11N-MERGE-SIGNAL");
+        uint32_t sem_off = (uint32_t)get_semaphore(ncrisc_half_merge_done_sem_id);
         noc_semaphore_inc(get_noc_addr(my_noc_x, my_noc_y, sem_off), 1u);
     }
 }

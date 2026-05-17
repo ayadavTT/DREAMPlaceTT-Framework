@@ -53,10 +53,9 @@
 constexpr uint32_t V11_MAX_OVERLAP = 8u;
 constexpr uint32_t TILE_ELEMS      = 1024u;
 
-// In-flight buffer per receiver. flush_recv sorts+dedupes before DRAM write,
-// so larger MAX_IN_FLIGHT = more duplicates combined per flush. But insertion
-// sort is O(n²), so we keep MAX_IN_FLIGHT modest. 64 makes each flush cost
-// ~2K compares ≈ 20 µs; with ~1k flushes per writer, ≈ 20 ms scatter overhead.
+// In-flight buffer per receiver. Sort+dedupe removed (A2). MIF must stay
+// ≤ max_per_page/2 (= half_cap per RISC) to avoid silent tuple truncation at
+// flush time. With max_per_page=128, MIF=64.
 constexpr uint32_t MAX_IN_FLIGHT = 64u;
 
 // Page header is 64 bytes (count + 15 padding uint32s) for NOC cache-line
@@ -111,6 +110,10 @@ void kernel_main() {
     const uint32_t shared_state_off   = get_arg_val<uint32_t>(19);
     (void)get_arg_val<uint32_t>(20);  // brisc_state_off unused on NCRISC
     const uint32_t tables_ready_sem_id= get_arg_val<uint32_t>(21);
+    // Drop-counter instrumentation: one uint32 per writer in a small DRAM
+    // buffer. We write the per-iter total at kernel end via inline-DW.
+    const uint32_t drop_dram          = get_arg_val<uint32_t>(22);
+    uint32_t total_drops              = 0;
 
     union { uint32_t u; float f; } cv;
     cv.u = inv_ba_u32;
@@ -212,36 +215,11 @@ void kernel_main() {
         if (cnt == 0u) return;
         V11Contrib* arr = &staging[recv * MAX_IN_FLIGHT];
 
-        // Insertion sort by composite key (bx << 16 | by). MAX_IN_FLIGHT ≤ 64
-        // makes O(n²) cheap (≤ ~2K cycles per flush). Stable order doesn't
-        // matter — duplicates are combined next.
-        for (uint32_t i = 1; i < cnt; ++i) {
-            V11Contrib v = arr[i];
-            uint32_t key_v = ((uint32_t)v.bx << 16) | (uint32_t)v.by;
-            int32_t j = (int32_t)i - 1;
-            while (j >= 0) {
-                uint32_t key_j = ((uint32_t)arr[j].bx << 16) | (uint32_t)arr[j].by;
-                if (key_j <= key_v) break;
-                arr[j + 1] = arr[j];
-                --j;
-            }
-            arr[j + 1] = v;
-        }
-
-        // Combine adjacent equal-key entries: arr[w-1].area += arr[r].area.
-        uint32_t w = 0;
-        for (uint32_t r = 0; r < cnt; ++r) {
-            if (w > 0 && arr[w - 1].bx == arr[r].bx && arr[w - 1].by == arr[r].by) {
-                arr[w - 1].area += arr[r].area;
-            } else {
-                arr[w] = arr[r];
-                ++w;
-            }
-        }
-        cnt = w;
-
-        // Pad to multiple of 4 (32 bytes) for NOC alignment; padding tuples
-        // have area=0 and are skipped by the accumulator's a==0 check.
+        // A2: Skip the insertion-sort + dedup pass. Gather accumulates via
+        // atomic-add (commutative), so duplicate (bx, by) tuples are summed
+        // correctly even when sent ungrouped. fp32 sum order changes are
+        // <1 ULP and well within the 1% HPWL tolerance. Only padding to a
+        // 4-tuple boundary remains, required for 32-byte NOC alignment.
         uint32_t cnt_padded = (cnt + 3u) & ~3u;
         for (uint32_t i = cnt; i < cnt_padded; ++i) {
             arr[i].bx = 0;
@@ -256,11 +234,15 @@ void kernel_main() {
 
         uint32_t already = dram_offset_tuples[recv];
         if (already >= ncrisc_cap_tuples) {
+            // Entire flush dropped — record original cnt as dropped.
+            total_drops += cnt;
             staging_count[recv] = 0u;
             return;
         }
         if (already + cnt > ncrisc_cap_tuples) {
-            cnt = ncrisc_cap_tuples - already;
+            uint32_t kept = ncrisc_cap_tuples - already;
+            total_drops += cnt - kept;
+            cnt = kept;
         }
         uint64_t page_base = rgen.get_noc_addr(my_writer_id * nc_all + recv);
         uint64_t dst = page_base
@@ -317,8 +299,46 @@ void kernel_main() {
             DeviceZoneScopedN("V11-ROUTE");
             // NCRISC processes the lower half of each tile (cells 0..511).
             for (uint32_t ci = 0; ci < TILE_ELEMS / 2u; ++ci) {
-                int bxl = (int)bxl_data[ci];
-                int byl = (int)byl_data[ci];
+                int bxl_i = (int)bxl_data[ci];
+                int byl_i = (int)byl_data[ci];
+                // SFPU face_bxl/face_byl clamp to 0, but be defensive.
+                if (bxl_i < 0) bxl_i = 0;
+                if (byl_i < 0) byl_i = 0;
+                uint32_t bxl_u = (uint32_t)bxl_i;
+                uint32_t byl_u = (uint32_t)byl_i;
+
+                // Hoist: the 8-bin cell footprint spans bxl..bxl+7, hitting at most
+                // 2 distinct tile_x values (and similarly tile_y), so ≤4 distinct
+                // owner cores. Pre-look-up all 4 here so the k-loop is L1-load-free.
+                uint32_t tile_x_lo = bxl_u >> 5;
+                uint32_t tile_x_hi = (bxl_u + 7u) >> 5;
+                uint32_t tile_y_lo = byl_u >> 5;
+                uint32_t tile_y_hi = (byl_u + 7u) >> 5;
+                if (tile_x_lo >= M_tiles) continue;
+                if (tile_y_lo >= N_tiles) continue;
+                if (tile_x_hi >= M_tiles) tile_x_hi = tile_x_lo;
+                if (tile_y_hi >= N_tiles) tile_y_hi = tile_y_lo;
+                bool x_split = (tile_x_hi != tile_x_lo);
+                bool y_split = (tile_y_hi != tile_y_lo);
+
+                uint32_t map_ll = tile_x_lo * N_tiles + tile_y_lo;
+                uint16_t prim_ll = tile_to_core[map_ll];
+                uint16_t prim_lh = y_split ? tile_to_core[tile_x_lo * N_tiles + tile_y_hi]
+                                           : prim_ll;
+                uint16_t prim_hl = x_split ? tile_to_core[tile_x_hi * N_tiles + tile_y_lo]
+                                           : prim_ll;
+                uint16_t prim_hh = (x_split && y_split)
+                                    ? tile_to_core[tile_x_hi * N_tiles + tile_y_hi]
+                                    : (x_split ? prim_hl : prim_lh);
+
+                const uint8_t* sh_ll = shard_table + map_ll * 16u;
+                const uint8_t* sh_lh = y_split ? (shard_table + (tile_x_lo * N_tiles + tile_y_hi) * 16u)
+                                               : sh_ll;
+                const uint8_t* sh_hl = x_split ? (shard_table + (tile_x_hi * N_tiles + tile_y_lo) * 16u)
+                                               : sh_ll;
+                const uint8_t* sh_hh = (x_split && y_split)
+                                        ? (shard_table + (tile_x_hi * N_tiles + tile_y_hi) * 16u)
+                                        : (x_split ? sh_hl : sh_lh);
 
                 // Track one-step precision blips: break only after TWO consecutive
                 // zero overlaps. Single zeros may be V4 SFPU floor-precision
@@ -331,14 +351,9 @@ void kernel_main() {
                         continue;
                     }
                     zero_streak_j = 0;
-                    int bx_s = bxl + (int)j;
-                    if (bx_s < 0) continue;
-                    uint32_t bx_val = (uint32_t)bx_s;
+                    uint32_t bx_val = bxl_u + j;
                     if (bx_val >= nbx) continue;
-                    uint32_t tile_x = bx_val >> 5;
-                    if (tile_x >= M_tiles) continue;
-                    // Hoist tile_x * N_tiles outside k-loop (one mul per j)
-                    uint32_t tile_x_row = tile_x * N_tiles;
+                    bool x_high = x_split && ((bx_val >> 5) == tile_x_hi);
 
                     uint32_t zero_streak_k = 0;
                     for (uint32_t k = 0; k < V11_MAX_OVERLAP; ++k) {
@@ -348,20 +363,20 @@ void kernel_main() {
                             continue;
                         }
                         zero_streak_k = 0;
-                        int by_s = byl + (int)k;
-                        if (by_s < 0) continue;
-                        uint32_t by_val = (uint32_t)by_s;
+                        uint32_t by_val = byl_u + k;
                         if (by_val >= nby) continue;
-                        uint32_t tile_y = by_val >> 5;
-                        if (tile_y >= N_tiles) continue;
+                        bool y_high = y_split && ((by_val >> 5) == tile_y_hi);
 
-                        uint32_t map_idx = tile_x_row + tile_y;
-                        uint32_t primary = (uint32_t)tile_to_core[map_idx];
+                        // 2x2 dispatch — uses pre-loaded owners/shard pointers.
+                        uint16_t prim16 = x_high ? (y_high ? prim_hh : prim_hl)
+                                                 : (y_high ? prim_lh : prim_ll);
+                        const uint8_t* sh = x_high ? (y_high ? sh_hh : sh_hl)
+                                                   : (y_high ? sh_lh : sh_ll);
+                        uint32_t primary = (uint32_t)prim16;
                         if (primary >= nc_all) continue;
 
                         // Shard round-robin: route to alt owners for hot tiles (K>1).
                         // For cold tiles (K=1), owner == primary always.
-                        const uint8_t* sh = shard_table + map_idx * 16u;
                         uint32_t K = (uint32_t)sh[0];
                         uint32_t owner = (K <= 1u) ? primary
                                        : ((emit_counter % K) == 0u ? primary
@@ -423,5 +438,15 @@ void kernel_main() {
                             page_base, 32u);
             noc_async_write_barrier();
         }
+    }
+
+    // ── Drop-counter: write total_drops to drop_dram[my_writer_id] ────────
+    // Single inline-DW write (4 bytes) targeting a 32-byte-aligned slot.
+    {
+        const InterleavedAddrGen<true> dgen = {
+            .bank_base_address = drop_dram,
+            .page_size = 32u,
+        };
+        noc_inline_dw_write(dgen.get_noc_addr(my_writer_id), total_drops);
     }
 }

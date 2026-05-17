@@ -779,7 +779,7 @@ int main(int argc, char* argv[]) {
     // ══════════════════════════════════════════════════════════════
     uint32_t M_tiles = (uint32_t)M / 32u;
     uint32_t N_tiles_v11 = (uint32_t)N / 32u;
-    std::shared_ptr<MeshBuffer> tile_map_buf, route_buf, owned_lookup_buf, hist_buf, shard_table_buf, shard_reduce_buf;
+    std::shared_ptr<MeshBuffer> tile_map_buf, route_buf, owned_lookup_buf, hist_buf, shard_table_buf, shard_reduce_buf, drop_buf;
     MeshWorkload wl_v11_scatter, wl_v11_accum, wl_v11_hist;
     // wl_v11_accum now performs the full gather (accum + reduce_a + reduce_bc)
     // in a single kernel using NOC semaphores for shard sync — keeping all 3
@@ -864,6 +864,11 @@ int main(int argc, char* argv[]) {
         // Allocate DRAM buffers
         tile_map_buf      = make_buf(tile_map_pgsz_v11, tile_map_pgsz_v11);
         owned_lookup_buf  = make_buf(owned_lookup_total, owned_lookup_pgsz_v11);
+        // Drop-counter instrumentation buffer: one uint32 per writer (NCRISC
+        // writers [0..nc_all) + BRISC writers [nc_all..2*nc_all)). Each
+        // 32-byte page holds a single uint32 at offset 0; rest is padding.
+        // Kernel writes via noc_inline_dw_write at end of execution.
+        drop_buf = make_buf(2u * (uint32_t)nc_all * 32u, 32u);
 
         // hist_buf: per-core histogram pages, total_tiles uint32 entries each.
         // Each writer dumps its local count map; host reduces to global.
@@ -992,11 +997,17 @@ int main(int argc, char* argv[]) {
         auto rk_v11 = CreateKernel(prog_v11_sc, KDIR + "v11_scatter_b_dm.cpp", all_crs,
             DataMovementConfig{.processor = DataMovementProcessor::RISCV_0,
                                .noc = NOC::RISCV_0_default});
+        // G-PRESCALE: V11 scatter pre-multiplies ox and oy outputs by
+        // sqrt(inv_bin_area) inside v4_compute (SFPU), so area = ox*oy is
+        // already pre-scaled by inv_bin_area at scatter emission time. The
+        // gather kernel's V11A-SCALE phase then becomes a no-op.
+        std::map<std::string, std::string> v4_defs_v11 = v4_defs;
+        v4_defs_v11["V4_OX_OY_SCALE_F"] = to_float_literal(std::sqrt(inv_ba));
         auto ck_v11 = CreateKernel(prog_v11_sc, KDIR + "v4_compute.cpp", all_crs,
             ComputeConfig{.fp32_dest_acc_en = true,
                           .unpack_to_dest_mode = v11_unpack,
                           .math_approx_mode = false,
-                          .defines = v4_defs});
+                          .defines = v4_defs_v11});
         auto sk_v11 = CreateKernel(prog_v11_sc, KDIR + "v11_scatter_dm.cpp", all_crs,
             DataMovementConfig{.processor = DataMovementProcessor::RISCV_1,
                                .noc = NOC::RISCV_1_default});
@@ -1015,6 +1026,7 @@ int main(int argc, char* argv[]) {
             uint32_t my_n = base_tpc + ((uint32_t)c < rem_tpc ? 1u : 0u);
             uint32_t first = (uint32_t)c * base_tpc + std::min((uint32_t)c, rem_tpc);
             uint32_t st_a = (uint32_t)shard_table_buf->address();
+            uint32_t drop_a = (uint32_t)drop_buf->address();
 
             // BRISC (combined reader + scatter_b). my_writer_id = my_core_id + nc_all.
             SetRuntimeArgs(prog_v11_sc, rk_v11, cc, {
@@ -1029,6 +1041,7 @@ int main(int argc, char* argv[]) {
                 sc_data_ready_sem, sc_brisc_done_sem,               // 18,19
                 shared_state_off_sc, brisc_state_off_sc,            // 20,21
                 sc_tables_ready_sem,                                // 22
+                drop_a,                                             // 23 drop_dram (BRISC drop slot = c + nc_all)
             });
             SetRuntimeArgs(prog_v11_sc, ck_v11, cc, {my_n});
             // NCRISC scatter. my_writer_id = my_core_id (existing slot).
@@ -1045,6 +1058,7 @@ int main(int argc, char* argv[]) {
                 sc_data_ready_sem, sc_brisc_done_sem,               // 17,18
                 shared_state_off_sc, brisc_state_off_sc,            // 19,20
                 sc_tables_ready_sem,                                // 21
+                drop_a,                                             // 22 drop_dram
             });
         }
         wl_v11_scatter.add_program(device_range, std::move(prog_v11_sc));
@@ -1118,6 +1132,10 @@ int main(int argc, char* argv[]) {
 
         // BRISC↔NCRISC merge semaphore (initial cold build always has it).
         uint32_t merge_sem_id_init = CreateSemaphore(prog_v11_ac, all_crs, 0u);
+        // G-PMERGE: two additional sems so BRISC and NCRISC can each do half
+        // of dense_b += dense_n in parallel after both V11{A,N}-ACC are done.
+        uint32_t brisc_acc_done_sem_init = CreateSemaphore(prog_v11_ac, all_crs, 0u);
+        uint32_t ncrisc_half_merge_done_sem_init = CreateSemaphore(prog_v11_ac, all_crs, 0u);
         // Step 5b: route_buf has nc_all writers (NCRISC + BRISC share pages).
         // Accum splits writer reads in half: BRISC [0..nc_all/2), NCRISC [nc_all/2..nc_all).
         uint32_t nc_split_init = (uint32_t)nc_all / 2u;
@@ -1148,6 +1166,8 @@ int main(int argc, char* argv[]) {
                 merge_sem_id_init,
                 (uint32_t)my_noc.x,
                 (uint32_t)my_noc.y,
+                brisc_acc_done_sem_init,           // arg 24 (G-PMERGE)
+                ncrisc_half_merge_done_sem_init,   // arg 25 (G-PMERGE)
             };
             for (auto tid : info.primary_tile_ids) args.push_back(tid);
             // No hot quads, no shard quints on initial build.
@@ -1189,7 +1209,7 @@ int main(int argc, char* argv[]) {
             ComputeConfig{.fp32_dest_acc_en = true,
                           .unpack_to_dest_mode = v11h_unpack,
                           .math_approx_mode = false,
-                          .defines = v4_defs});
+                          .defines = v4_defs_v11});
         auto hk = CreateKernel(prog_v11_h, KDIR + "v11_histogram.cpp", all_crs,
             DataMovementConfig{.processor = DataMovementProcessor::RISCV_1,
                                .noc = NOC::RISCV_1_default});
@@ -1216,8 +1236,10 @@ int main(int argc, char* argv[]) {
     // ── JIT compile ───────────────────────────────────────────────
     printf("[server] JIT compiling kernels...\n"); fflush(stdout);
     auto t_jit = hrclock::now();
-    EnqueueMeshWorkload(cq, wl_scatter, false); Finish(cq);
-    EnqueueMeshWorkload(cq, wl_gather,  false); Finish(cq);
+    if (!use_v11) {
+        EnqueueMeshWorkload(cq, wl_scatter, false); Finish(cq);
+        EnqueueMeshWorkload(cq, wl_gather,  false); Finish(cq);
+    }
     if (use_v11) {
         EnqueueMeshWorkload(cq, wl_v11_hist,    false); Finish(cq);
         EnqueueMeshWorkload(cq, wl_v11_scatter, false); Finish(cq);
@@ -1246,7 +1268,11 @@ int main(int argc, char* argv[]) {
 
         size_t pos_bytes   = (size_t)soa_padded * sizeof(float);
         size_t field_bytes = (size_t)M * N * sizeof(float);
-        size_t shm_size    = SHM_HEADER_SIZE + 4 * pos_bytes + 2 * field_bytes;
+        // +1 field slot for initial_density_map_normalized (client writes
+        // once at start; server folds into density_flat before TT DCT so the
+        // CPU_DCT=0 path can converge — fixed-cell terminal density must be
+        // present in the density used by the field solve).
+        size_t shm_size    = SHM_HEADER_SIZE + 4 * pos_bytes + 3 * field_bytes;
 
         void* shm_ptr = mmap(nullptr, shm_size, PROT_READ | PROT_WRITE,
                              MAP_SHARED, shm_fd, 0);
@@ -1261,6 +1287,7 @@ int main(int argc, char* argv[]) {
         const float* shm_sy  = shm_sx + soa_padded;
         float*       shm_fx  = (float*)((char*)shm_ptr + SHM_HEADER_SIZE + 4 * pos_bytes);
         float*       shm_fy  = shm_fx + M * N;
+        const float* shm_id  = shm_fy + M * N;  // initial_density_map_normalized
 
         // ── Signal READY (after shm is mapped so Python can immediately use it) ──
         flag_write(ready_flag, "READY\n");
@@ -1491,6 +1518,9 @@ int main(int argc, char* argv[]) {
 
                         // BRISC↔NCRISC merge semaphore (one per core).
                         uint32_t merge_sem_id = CreateSemaphore(new_prog_ac, all_crs, 0u);
+                        // G-PMERGE: BRISC and NCRISC each do half the merge in parallel.
+                        uint32_t brisc_acc_done_sem = CreateSemaphore(new_prog_ac, all_crs, 0u);
+                        uint32_t ncrisc_half_merge_done_sem = CreateSemaphore(new_prog_ac, all_crs, 0u);
                         // Step 5b: route_buf has nc_all writers. Accum reads
                         // BRISC [0..nc_all/2), NCRISC [nc_all/2..nc_all).
                         uint32_t nc_split = (uint32_t)nc_all / 2u;
@@ -1555,6 +1585,8 @@ int main(int argc, char* argv[]) {
                                 merge_sem_id,
                                 (uint32_t)my_noc.x,
                                 (uint32_t)my_noc.y,
+                                brisc_acc_done_sem,            // arg 24 (G-PMERGE)
+                                ncrisc_half_merge_done_sem,    // arg 25 (G-PMERGE)
                             };
                             // primary tile IDs
                             for (auto tid : info.primary_tile_ids) args.push_back(tid);
@@ -1597,6 +1629,35 @@ int main(int argc, char* argv[]) {
                 ts = hrclock::now();
                 EnqueueMeshWorkload(cq, wl_v11_scatter, false); Finish(cq);
                 scatter_ms = ms_since(ts);
+
+                // Drop-counter: read drop_buf (2*nc_all uint32s, one per
+                // writer-RISC) and report max + sum if any drops happened.
+                // Cost: ~7 KB DRAM read, <100 µs per iter.
+                {
+                    std::vector<uint32_t> drop_host(2u * (size_t)nc_all * 8u, 0);
+                    EnqueueReadMeshBuffer(cq, drop_host, drop_buf, true);
+                    uint64_t drop_sum = 0;
+                    uint32_t drop_max = 0;
+                    int max_slot = -1;
+                    for (uint32_t s = 0; s < 2u * (uint32_t)nc_all; ++s) {
+                        uint32_t v = drop_host[s * 8u];  // slot 0 of each 32-byte page
+                        drop_sum += v;
+                        if (v > drop_max) { drop_max = v; max_slot = (int)s; }
+                    }
+                    static uint64_t last_drop_print_iter = 0;
+                    if (drop_sum > 0u && v11_iter - last_drop_print_iter >= 50u) {
+                        printf("[server] DROP iter=%llu sum=%llu max=%u "
+                               "(slot=%d %s c=%d)\n",
+                               (unsigned long long)v11_iter,
+                               (unsigned long long)drop_sum,
+                               drop_max, max_slot,
+                               (max_slot >= nc_all) ? "BRISC" : "NCRISC",
+                               (max_slot >= nc_all) ? max_slot - nc_all : max_slot);
+                        fflush(stdout);
+                        last_drop_print_iter = v11_iter;
+                    }
+                }
+
                 ts = hrclock::now();
                 // Merged kernel does accum + reduce_a + reduce_bc in one program;
                 // shard sync is via NOC semaphores (1 host Finish() vs the old 3).
@@ -1689,15 +1750,46 @@ int main(int argc, char* argv[]) {
             }
 
             // ── TTNN DCT solve ────────────────────────────────────────────────
+            // CPU_DCT=1 bypass: write the (already initial_density-folded)
+            // density_flat into the fx slot and let the Python client run
+            // the DCT/IDCT chain on CPU. Skip TTNN DCT entirely.
             double upload_ms = 0, compute_ms = 0, download_ms = 0;
-            ttnn_solver.solve(density_flat, field_x, field_y,
-                              mesh_device.get(),
-                              upload_ms, compute_ms, download_ms);
+            static const bool use_cpu_dct =
+                (getenv("CPU_DCT") && std::string(getenv("CPU_DCT")) == "1");
+            if (!use_cpu_dct) {
+                // Fold initial_density_map (fixed-terminal density,
+                // already normalized by bin area on the client) into the
+                // density returned by V11 scatter+gather (movable+filler
+                // only), BEFORE the TT DCT. Without this the field solve
+                // misses fixed terminals → cells don't repel them →
+                // HPWL diverges to ~150–185 M at adaptec1_512.
+                //
+                // The client writes shm_id once at server start; we cache
+                // it on first use to avoid re-reading 16 MB of shm per iter
+                // at grid 2048.
+                static std::vector<float> id_cache;
+                if (id_cache.empty()) {
+                    id_cache.assign(shm_id, shm_id + (size_t)M * N);
+                }
+                const size_t MN = (size_t)M * N;
+                float* df = density_flat.data();
+                const float* idc = id_cache.data();
+                for (size_t i = 0; i < MN; ++i) df[i] += idc[i];
+
+                ttnn_solver.solve(density_flat, field_x, field_y,
+                                  mesh_device.get(),
+                                  upload_ms, compute_ms, download_ms);
+            }
 
             // ── Write fields directly into shm ────────────────────────────────
             ts = hrclock::now();
-            std::memcpy(shm_fx, field_x.data(), (size_t)M * N * sizeof(float));
-            std::memcpy(shm_fy, field_y.data(), (size_t)M * N * sizeof(float));
+            if (use_cpu_dct) {
+                std::memcpy(shm_fx, density_flat.data(), (size_t)M * N * sizeof(float));
+                std::memset(shm_fy, 0, (size_t)M * N * sizeof(float));
+            } else {
+                std::memcpy(shm_fx, field_x.data(), (size_t)M * N * sizeof(float));
+                std::memcpy(shm_fy, field_y.data(), (size_t)M * N * sizeof(float));
+            }
             double fw_ms = ms_since(ts);
 
             double total_ms = h2d_ms + scatter_ms + gather_ms + density_d2h_ms
