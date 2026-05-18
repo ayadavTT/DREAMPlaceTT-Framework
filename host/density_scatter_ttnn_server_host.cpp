@@ -218,6 +218,23 @@ static std::vector<float> tt_tensor_to_vec(const TT& t, int M, int N) {
     return vec;
 }
 
+// Wrap an existing MeshBuffer (already in TT DRAM, ROW_MAJOR fp32)
+// as a ttnn::Tensor without any host-device data transfer.
+// density_buf has page_size = N*sizeof(float), total = M*N*sizeof(float),
+// which matches ROW_MAJOR [M,N] fp32 interleaved DRAM exactly.
+static TT wrap_mesh_buf_as_tensor(
+        std::shared_ptr<MeshBuffer> mesh_buf,
+        int rows, int cols) {
+    TensorLayout rm_layout(
+        ttnn::DataType::FLOAT32,
+        PageConfig(ttnn::Layout::ROW_MAJOR),
+        tt::tt_metal::MemoryConfig{});
+    TensorSpec spec(ttnn::Shape{(uint32_t)rows, (uint32_t)cols}, rm_layout);
+    TensorTopology topo{};
+    MeshTensor mt(mesh_buf, spec, topo);
+    return TT(DeviceStorage(std::move(mt)));
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // TTNN DCT solver context (initialized once per (M, N, bsx, bsy))
 // ═══════════════════════════════════════════════════════════════════
@@ -303,6 +320,39 @@ struct TTNNDCTSolver {
         field_y = tt_tensor_to_vec(field_y_t, M, N);
         download_ms = ms_since(ts);
     }
+
+    // Zero-copy variant: accepts a ROW_MAJOR device tensor (already on TT DRAM)
+    // instead of a host vector.  Avoids the D2H + H2D round-trip.
+    void solve_device(TT rho_rm,
+                      std::vector<float>& field_x, std::vector<float>& field_y,
+                      MeshDevice* dev,
+                      double& tilize_ms, double& compute_ms, double& download_ms) {
+        auto ts = hrclock::now();
+        auto rho_tt = ttnn::to_layout(rho_rm, ttnn::Layout::TILE);
+        Finish(dev->mesh_command_queue());
+        tilize_ms = ms_since(ts);
+
+        ts = hrclock::now();
+        auto temp  = ttnn::operations::matmul::matmul(rho_tt,   DCT_N_T_tt);
+        auto auv   = ttnn::operations::matmul::matmul(DCT_M_tt, temp);
+
+        auto fx_auv = ttnn::multiply(auv, wu_tt);
+        auto fy_auv = ttnn::multiply(auv, wv_tt);
+
+        auto temp_x    = ttnn::operations::matmul::matmul(fx_auv,    IDCT_N_T_tt);
+        auto field_x_t = ttnn::operations::matmul::matmul(IDXST_M_tt, temp_x);
+
+        auto temp_y    = ttnn::operations::matmul::matmul(fy_auv,    IDXST_N_T_tt);
+        auto field_y_t = ttnn::operations::matmul::matmul(IDCT_M_tt, temp_y);
+
+        Finish(dev->mesh_command_queue());
+        compute_ms = ms_since(ts);
+
+        ts = hrclock::now();
+        field_x = tt_tensor_to_vec(field_x_t, M, N);
+        field_y = tt_tensor_to_vec(field_y_t, M, N);
+        download_ms = ms_since(ts);
+    }
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -342,17 +392,21 @@ int main(int argc, char* argv[]) {
     printf("[server] M=%d N=%d NC_max=%d ipc_dir=%s\n", M, N, NC_max, ipc_dir.c_str());
     fflush(stdout);
 
-    // ── Gather mode: v11=cell-centric tile-routed (Phase 1 stub),
+    // ── Gather mode: v13_fpu=tile-record + TRISC FPU matmul gather,
+    //   v11=cell-centric tile-routed,
     //   v10=V6 scatter + bulk-async gather, v9=y-chunked scatter+SFPU gather,
     //   v8=SFPU (N≤512), v7=dense-scalar, v6=sparse ──
-    // Override with env var GATHER_MODE=v6|v7|v8|v9|v10|v11|auto
+    // Override with env var GATHER_MODE=v6|v7|v8|v9|v10|v11|v13_fpu|auto
     std::string gather_mode_env = getenv("GATHER_MODE") ? getenv("GATHER_MODE") : "auto";
+    bool use_v13 = false;  // V13_fpu tile-record scatter + FPU matmul gather
     bool use_v11 = false;  // V11 cell-centric tile-routed (Phase 1: stub validator)
     bool use_v10 = false;  // V6 sparse scatter + V10 batched gather
     bool use_v9 = false;
     bool use_v8 = false;
     bool use_v7 = false;
-    if (gather_mode_env == "v11") {
+    if (gather_mode_env == "v13_fpu" || gather_mode_env == "v13") {
+        use_v13 = true;
+    } else if (gather_mode_env == "v11") {
         // V11 cell-centric tile-routed scatter+accumulate. Replaces V6 sparse
         // scatter and V10 bulk gather entirely.
         use_v11 = true;
@@ -372,7 +426,8 @@ int main(int argc, char* argv[]) {
         use_v8 = ((uint32_t)N <= 512u);
         use_v9 = !use_v8;
     }
-    const char* gmode_str = use_v11 ? "v11-tile-routed"
+    const char* gmode_str = use_v13 ? "v13-fpu-matmul"
+                          : use_v11 ? "v11-tile-routed"
                           : use_v10 ? "v10-bulk"
                           : use_v9 ? "v9-chunked"
                           : use_v8 ? "v8-sfpu"
@@ -816,6 +871,40 @@ int main(int argc, char* argv[]) {
     std::vector<PerCoreShardInfo> per_core_v11;
     uint32_t v11_dense_offset_bytes = 0u;  // offset of dense from CB_SCRATCH base (set below)
     uint32_t n_owned_max = 0;              // hoisted: needed by the per-iter refresh path
+
+    // ── V13_fpu declarations (parallel to V11) ───────────────────────────────
+    // V13 emits 40-byte tile-records (≤4 per cell) instead of V11's 8-byte
+    // bin-tuples (≤64 per cell). Gather uses a TRISC FPU matmul to compute
+    // the 8×8 outer-product `ox[j]*oy[k]` per record. Density is bf16 in DRAM
+    // and UNNORMALIZED (host must divide by bin_area on readback).
+    constexpr uint32_t V13_MAX_OVERLAP    = 8u;
+    constexpr uint32_t V13_PAGE_HDR_BYTES = 64u;
+    constexpr uint32_t V13_RECORD_BYTES   = 40u;
+    constexpr uint32_t V13_RECORDS_CAP    = 4096u;  // per (writer, receiver) page
+    constexpr uint32_t V13_MAX_IN_FLIGHT  = 16u;
+    constexpr uint32_t V13_SHARED_BYTES_  = 4u + 4u + 8u*4u + 8u*4u;  // ScatterShared
+    constexpr uint32_t V13_OV_BUF_BYTES   = 128u;   // 128 B per RISC overflow ring
+    constexpr uint32_t V13_K_BATCH          = 32u;
+    constexpr uint32_t V13_N_INFLIGHT       = 4u;          // OPT-1: 4-tile push batching
+    constexpr uint32_t V13_PUSH_BATCH       = V13_N_INFLIGHT * V13_K_BATCH;  // 128
+    constexpr uint32_t V13_CB_OXY_DEPTH     = 8u;          // ≥ 2 × N_INFLIGHT for pipelining
+    constexpr uint32_t V13_MAX_READ_RECORDS = 64u;
+    constexpr uint32_t TILE_BF16_BYTES_v13 = 32u * 32u * 2u;
+    std::shared_ptr<MeshBuffer> tile_map_buf_v13, route_buf_v13, owned_lookup_buf_v13,
+                                overflow_buf_v13, density_buf_v13;
+    MeshWorkload wl_v13_scatter, wl_v13_accum;
+    std::vector<uint16_t> tile_to_core_v13;
+    std::vector<std::vector<uint32_t>> core_to_tiles_v13;
+    uint32_t tile_map_bytes_v13   = 0u;
+    uint32_t tile_map_pgsz_v13    = 0u;
+    uint32_t route_pgsz_v13       = 0u;
+    uint32_t owned_lookup_pgsz_v13 = 0u;
+    uint32_t overflow_pgsz_v13    = 256u;
+    uint32_t density_pgsz_v13     = 0u;   // bf16 row, N*2 bytes
+    uint32_t total_tiles_v13      = 0u;
+    uint32_t M_tiles_v13          = (uint32_t)M / 32u;
+    uint32_t N_tiles_v13          = (uint32_t)N / 32u;
+    uint32_t n_owned_max_v13      = 0u;
     if (use_v11) {
         // Build snake-fill ownership map on host
         v11::build_snake_fill_ownership(M_tiles, N_tiles_v11, (uint32_t)nc_all,
@@ -1233,10 +1322,265 @@ int main(int argc, char* argv[]) {
         wl_v11_hist.add_program(device_range, std::move(prog_v11_h));
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // V13_fpu setup: tile-record scatter + TRISC FPU matmul accum.
+    // Mirrors v13_full_smoke_host.cpp layout. Programs:
+    //   prog_v13_scatter: v11_scatter_b → v13_scatter_brisc renamed actually;
+    //                     real names: v13_scatter_brisc (BRISC) +
+    //                     v4_compute (TRISC, shared w/ V11) +
+    //                     v13_scatter_ncrisc (NCRISC).
+    //   prog_v13_accum:   v13_accum_brisc_mt (BRISC) +
+    //                     v13_accum_compute_mt (TRISC FPU matmul) +
+    //                     v13_accum_ncrisc_void (NCRISC stub).
+    // Density buffer is bf16, UNNORMALIZED — host divides by bin_area on D2H.
+    // ══════════════════════════════════════════════════════════════
+    if (use_v13) {
+        v11::build_snake_fill_ownership(M_tiles_v13, N_tiles_v13, (uint32_t)nc_all,
+                                        tile_to_core_v13, core_to_tiles_v13);
+        total_tiles_v13 = M_tiles_v13 * N_tiles_v13;
+        tile_map_bytes_v13 = total_tiles_v13 * sizeof(uint16_t);
+        tile_map_pgsz_v13  = (tile_map_bytes_v13 + 31u) & ~31u;
+
+        route_pgsz_v13 = (V13_PAGE_HDR_BYTES + V13_RECORDS_CAP * V13_RECORD_BYTES + 31u) & ~31u;
+        uint64_t route_total = (uint64_t)nc_all * (uint64_t)nc_all * route_pgsz_v13;
+        if (route_total > 0xFFFFFFFFull) {
+            printf("[server] FATAL: V13 route_buf %llu B > 4 GB\n",
+                   (unsigned long long)route_total);
+            fflush(stdout); std::exit(1);
+        }
+        owned_lookup_pgsz_v13 = (total_tiles_v13 * (uint32_t)sizeof(uint16_t) + 31u) & ~31u;
+        uint32_t owned_lookup_total = (uint32_t)nc_all * owned_lookup_pgsz_v13;
+        uint32_t overflow_total = (uint32_t)nc_all * overflow_pgsz_v13;
+        density_pgsz_v13 = (uint32_t)N * (uint32_t)sizeof(uint16_t);  // bf16 row
+        uint32_t density_total_v13 = (uint32_t)M * density_pgsz_v13;
+
+        n_owned_max_v13 = 0u;
+        for (auto& v : core_to_tiles_v13)
+            if ((uint32_t)v.size() > n_owned_max_v13) n_owned_max_v13 = (uint32_t)v.size();
+
+        printf("[server] V13: %u tiles (%ux%u), max_owned=%u, route_pgsz=%u, "
+               "route_total=%llu MB, density(bf16)=%u KB\n",
+               total_tiles_v13, M_tiles_v13, N_tiles_v13, n_owned_max_v13,
+               route_pgsz_v13, (unsigned long long)(route_total / (1024u*1024u)),
+               density_total_v13 / 1024u);
+        fflush(stdout);
+
+        // Allocate V13 buffers.
+        tile_map_buf_v13     = make_buf(tile_map_pgsz_v13, tile_map_pgsz_v13);
+        owned_lookup_buf_v13 = make_buf(owned_lookup_total, owned_lookup_pgsz_v13);
+        route_buf_v13        = make_buf((uint32_t)route_total, route_pgsz_v13);
+        overflow_buf_v13     = make_buf(overflow_total, overflow_pgsz_v13);
+        density_buf_v13      = make_buf(density_total_v13, density_pgsz_v13);
+
+        // Upload tile_to_core.
+        {
+            std::vector<uint8_t> up(tile_map_pgsz_v13, 0);
+            std::memcpy(up.data(), tile_to_core_v13.data(), tile_map_bytes_v13);
+            EnqueueWriteMeshBuffer(cq, tile_map_buf_v13, up, false);
+        }
+        // Upload owned_lookup per core.
+        {
+            std::vector<uint8_t> up(owned_lookup_total, 0xFF);
+            for (uint32_t c = 0; c < (uint32_t)nc_all; ++c) {
+                uint16_t* page = reinterpret_cast<uint16_t*>(
+                    up.data() + (size_t)c * owned_lookup_pgsz_v13);
+                for (uint32_t local = 0; local < core_to_tiles_v13[c].size(); ++local) {
+                    page[core_to_tiles_v13[c][local]] = (uint16_t)local;
+                }
+            }
+            EnqueueWriteMeshBuffer(cq, owned_lookup_buf_v13, up, false);
+        }
+        // Zero overflow + density (defensive).
+        {
+            std::vector<uint8_t> z(overflow_total, 0);
+            EnqueueWriteMeshBuffer(cq, overflow_buf_v13, z, false);
+        }
+        {
+            std::vector<uint8_t> z(density_total_v13, 0);
+            EnqueueWriteMeshBuffer(cq, density_buf_v13, z, false);
+        }
+        Finish(cq);
+
+        // ── PROGRAM 1: V13 scatter ─────────────────────────────────────────
+        Program prog_v13_sc = CreateProgram();
+        for (uint32_t i = 0; i < 4; ++i) make_cb_all(prog_v13_sc, i, 2);
+        make_cb_all(prog_v13_sc, 4, 1); make_cb_all(prog_v13_sc, 5, 1);
+        for (uint32_t j = 0; j < V13_MAX_OVERLAP; ++j) {
+            make_cb_all(prog_v13_sc, 6  + j, 1);
+            make_cb_all(prog_v13_sc, 14 + j, 1);
+        }
+
+        uint32_t sc_shared_off_v13 = 0u, sc_brisc_off_v13 = 0u, sc_scratch_v13 = 0u;
+        {
+            uint32_t off = 0u;
+            off += tile_map_bytes_v13;                                 off = (off + 7u) & ~7u;
+            off += (uint32_t)nc_all * V13_MAX_IN_FLIGHT * V13_RECORD_BYTES;
+            off = (off + 3u) & ~3u;
+            off += (uint32_t)nc_all * 4u;                              // staging_count_n
+            off += (uint32_t)nc_all * 4u;                              // dram_offset_n
+            off = (off + 63u) & ~63u;
+            off += V13_PAGE_HDR_BYTES;                                  off = (off + 63u) & ~63u;
+            sc_shared_off_v13 = off;
+            off += V13_SHARED_BYTES_;                                   off = (off + 63u) & ~63u;
+            sc_brisc_off_v13 = off;
+            off += (uint32_t)nc_all * V13_MAX_IN_FLIGHT * V13_RECORD_BYTES;
+            off = (off + 3u) & ~3u;
+            off += (uint32_t)nc_all * 4u;                              // staging_count_b
+            off += (uint32_t)nc_all * 4u;                              // dram_offset_b
+            off = (off + 63u) & ~63u;
+            off += V13_PAGE_HDR_BYTES;
+            off += 64u;                                                 // safety gap
+            sc_scratch_v13 = (off + 31u) & ~31u;
+        }
+        printf("[server] V13 scatter scratch = %u KB\n", sc_scratch_v13 / 1024u);
+        if (sc_scratch_v13 >= 1536u * 1024u) {
+            printf("[server] FATAL: V13 scatter scratch %u KB exceeds L1\n",
+                   sc_scratch_v13 / 1024u);
+            fflush(stdout); std::exit(1);
+        }
+        fflush(stdout);
+        CreateCircularBuffer(prog_v13_sc, all_crs,
+            CircularBufferConfig(sc_scratch_v13, {{24u, tt::DataFormat::Float32}})
+                .set_page_size(24u, sc_scratch_v13));
+
+        std::vector<UnpackToDestMode> v13_unpack(NUM_CIRCULAR_BUFFERS,
+                                                  UnpackToDestMode::Default);
+        for (int i = 0; i < 4; ++i) v13_unpack[i] = UnpackToDestMode::UnpackToDestFp32;
+
+        auto sk_v13_b = CreateKernel(prog_v13_sc, KDIR + "v13_scatter_brisc.cpp", all_crs,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_0,
+                               .noc = NOC::RISCV_0_default});
+        auto ck_v13_sc = CreateKernel(prog_v13_sc, KDIR + "v4_compute.cpp", all_crs,
+            ComputeConfig{.math_fidelity = MathFidelity::HiFi4,
+                          .fp32_dest_acc_en = true,
+                          .unpack_to_dest_mode = v13_unpack,
+                          .math_approx_mode = false,
+                          .defines = v4_defs});
+        auto sk_v13_n = CreateKernel(prog_v13_sc, KDIR + "v13_scatter_ncrisc.cpp", all_crs,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_1,
+                               .noc = NOC::RISCV_1_default});
+
+        uint32_t sc_data_ready_sem_v13   = CreateSemaphore(prog_v13_sc, all_crs, 0u);
+        uint32_t sc_brisc_done_sem_v13   = CreateSemaphore(prog_v13_sc, all_crs, 0u);
+        uint32_t sc_tables_ready_sem_v13 = CreateSemaphore(prog_v13_sc, all_crs, 0u);
+
+        uint32_t tm_a_v13 = (uint32_t)tile_map_buf_v13->address();
+        uint32_t rt_a_v13 = (uint32_t)route_buf_v13->address();
+        uint32_t ov_a_v13 = (uint32_t)overflow_buf_v13->address();
+
+        for (int c = 0; c < nc_all; ++c) {
+            auto cc = all_ccs[c];
+            uint32_t my_n  = base_tpc + ((uint32_t)c < rem_tpc ? 1u : 0u);
+            uint32_t first = (uint32_t)c * base_tpc + std::min((uint32_t)c, rem_tpc);
+            // BRISC: combined reader + scatter (cells [512..1024) per cell-tile).
+            SetRuntimeArgs(prog_v13_sc, sk_v13_b, cc, {
+                px_a, py_a, sx_a, sy_a, tile_pgsz, first, my_n,        // 0..6
+                tile_map_bytes_v13,                                      // 7
+                (uint32_t)c, (uint32_t)nc_all,                           // 8,9
+                M_tiles_v13, N_tiles_v13,                                // 10,11
+                (uint32_t)M, (uint32_t)N,                                // 12,13
+                rt_a_v13, route_pgsz_v13, V13_RECORDS_CAP,               // 14..16
+                (uint32_t)c,                                             // 17 my_writer_id
+                sc_data_ready_sem_v13, sc_brisc_done_sem_v13,            // 18,19
+                sc_shared_off_v13, sc_brisc_off_v13,                     // 20,21
+                sc_tables_ready_sem_v13,                                 // 22
+                ov_a_v13,                                                // 23 overflow_dram
+            });
+            SetRuntimeArgs(prog_v13_sc, ck_v13_sc, cc, {my_n});
+            // NCRISC scatter (cells [0..512)).
+            SetRuntimeArgs(prog_v13_sc, sk_v13_n, cc, {
+                tm_a_v13, tile_map_pgsz_v13, tile_map_bytes_v13,         // 0..2
+                (uint32_t)c, (uint32_t)nc_all,                           // 3,4
+                M_tiles_v13, N_tiles_v13,                                // 5,6
+                (uint32_t)M, (uint32_t)N,                                // 7,8
+                my_n,                                                    // 9
+                rt_a_v13, route_pgsz_v13, V13_RECORDS_CAP,               // 10..12
+                (uint32_t)c,                                             // 13 my_writer_id
+                sc_data_ready_sem_v13, sc_brisc_done_sem_v13,            // 14,15
+                sc_shared_off_v13, sc_brisc_off_v13,                     // 16,17
+                sc_tables_ready_sem_v13,                                 // 18
+                ov_a_v13,                                                // 19 overflow_dram
+            });
+        }
+        wl_v13_scatter.add_program(device_range, std::move(prog_v13_sc));
+
+        // ── PROGRAM 2: V13 accumulate ──────────────────────────────────────
+        Program prog_v13_ac = CreateProgram();
+        // bf16 CBs: c_0 OX (2 tiles), c_1 OY (2 tiles), c_16 DENSE (2 tiles).
+        auto make_cb_bf16_v13 = [&](uint32_t idx, uint32_t n) {
+            CreateCircularBuffer(prog_v13_ac, all_crs,
+                CircularBufferConfig(n * TILE_BF16_BYTES_v13,
+                                     {{idx, tt::DataFormat::Float16_b}})
+                    .set_page_size(idx, TILE_BF16_BYTES_v13));
+        };
+        make_cb_bf16_v13(0,  V13_CB_OXY_DEPTH);   // CB_OX (OPT-1: depth 8 for 4-batch double-buffer)
+        make_cb_bf16_v13(1,  V13_CB_OXY_DEPTH);   // CB_OY
+        make_cb_bf16_v13(16, 2);                  // CB_DENSE
+
+        uint32_t ac_scratch_v13 = 0u;
+        {
+            uint32_t off = 0u;
+            off += total_tiles_v13 * (uint32_t)sizeof(uint16_t); off = (off + 63u) & ~63u;
+            off += (uint32_t)nc_all * V13_PAGE_HDR_BYTES;        off = (off + 63u) & ~63u;
+            off += V13_MAX_READ_RECORDS * V13_RECORD_BYTES;      off = (off + 63u) & ~63u;
+            // OPT-1: per_tile_staging holds PUSH_BATCH (=128) records per tile
+            off += n_owned_max_v13 * V13_PUSH_BATCH * V13_RECORD_BYTES; off = (off + 63u) & ~63u;
+            off += n_owned_max_v13 * 4u;                          off = (off + 63u) & ~63u;
+            off += TILE_BF16_BYTES_v13;                           off = (off + 63u) & ~63u;
+            off += 256u;                                          // safety
+            ac_scratch_v13 = (off + 31u) & ~31u;
+        }
+        printf("[server] V13 accum scratch = %u KB (max_owned=%u)\n",
+               ac_scratch_v13 / 1024u, n_owned_max_v13);
+        if (ac_scratch_v13 >= 1536u * 1024u) {
+            printf("[server] FATAL: V13 accum scratch %u KB exceeds L1\n",
+                   ac_scratch_v13 / 1024u);
+            fflush(stdout); std::exit(1);
+        }
+        fflush(stdout);
+        CreateCircularBuffer(prog_v13_ac, all_crs,
+            CircularBufferConfig(ac_scratch_v13, {{24u, tt::DataFormat::Float32}})
+                .set_page_size(24u, ac_scratch_v13));
+
+        auto ak_v13_b = CreateKernel(prog_v13_ac, KDIR + "v13_accum_brisc_mt.cpp", all_crs,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_0,
+                               .noc = NOC::RISCV_0_default});
+        auto ak_v13_n = CreateKernel(prog_v13_ac, KDIR + "v13_accum_ncrisc_void.cpp", all_crs,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_1,
+                               .noc = NOC::RISCV_1_default});
+        auto ak_v13_c = CreateKernel(prog_v13_ac, KDIR + "v13_accum_compute_mt.cpp", all_crs,
+            ComputeConfig{.math_fidelity = MathFidelity::HiFi4,
+                          .fp32_dest_acc_en = true,
+                          .math_approx_mode = false});
+
+        uint32_t ol_a_v13 = (uint32_t)owned_lookup_buf_v13->address();
+        uint32_t da_a_v13 = (uint32_t)density_buf_v13->address();
+        for (int c = 0; c < nc_all; ++c) {
+            auto cc = all_ccs[c];
+            uint32_t n_owned = (uint32_t)core_to_tiles_v13[c].size();
+            std::vector<uint32_t> args = {
+                ol_a_v13, owned_lookup_pgsz_v13,
+                (uint32_t)c, (uint32_t)nc_all,
+                M_tiles_v13, N_tiles_v13,
+                (uint32_t)M, (uint32_t)N,
+                rt_a_v13, route_pgsz_v13, V13_RECORDS_CAP,
+                da_a_v13, density_pgsz_v13,
+                n_owned,
+            };
+            for (uint32_t i = 0; i < n_owned; ++i) {
+                args.push_back(core_to_tiles_v13[c][i]);
+            }
+            SetRuntimeArgs(prog_v13_ac, ak_v13_b, cc, args);
+            SetRuntimeArgs(prog_v13_ac, ak_v13_n, cc, {});
+            SetRuntimeArgs(prog_v13_ac, ak_v13_c, cc, {n_owned});
+        }
+        wl_v13_accum.add_program(device_range, std::move(prog_v13_ac));
+    }
+
     // ── JIT compile ───────────────────────────────────────────────
     printf("[server] JIT compiling kernels...\n"); fflush(stdout);
     auto t_jit = hrclock::now();
-    if (!use_v11) {
+    if (!use_v11 && !use_v13) {
         EnqueueMeshWorkload(cq, wl_scatter, false); Finish(cq);
         EnqueueMeshWorkload(cq, wl_gather,  false); Finish(cq);
     }
@@ -1244,6 +1588,10 @@ int main(int argc, char* argv[]) {
         EnqueueMeshWorkload(cq, wl_v11_hist,    false); Finish(cq);
         EnqueueMeshWorkload(cq, wl_v11_scatter, false); Finish(cq);
         EnqueueMeshWorkload(cq, wl_v11_accum,   false); Finish(cq);
+    }
+    if (use_v13) {
+        EnqueueMeshWorkload(cq, wl_v13_scatter, false); Finish(cq);
+        EnqueueMeshWorkload(cq, wl_v13_accum,   false); Finish(cq);
     }
     printf("[server] JIT done: %.1f ms\n", ms_since(t_jit)); fflush(stdout);
 
@@ -1664,6 +2012,13 @@ int main(int argc, char* argv[]) {
                 EnqueueMeshWorkload(cq, wl_v11_accum, false); Finish(cq);
                 gather_ms = ms_since(ts);
                 v11_iter++;
+            } else if (use_v13) {
+                ts = hrclock::now();
+                EnqueueMeshWorkload(cq, wl_v13_scatter, false); Finish(cq);
+                scatter_ms = ms_since(ts);
+                ts = hrclock::now();
+                EnqueueMeshWorkload(cq, wl_v13_accum, false); Finish(cq);
+                gather_ms = ms_since(ts);
             } else {
                 ts = hrclock::now();
                 EnqueueMeshWorkload(cq, wl_scatter, false); Finish(cq);
@@ -1674,18 +2029,112 @@ int main(int argc, char* argv[]) {
             }
 
             // ── D2H: density readback ─────────────────────────────────────────
-            ts = hrclock::now();
-            EnqueueReadMeshBuffer(cq, density_flat, density_buf, true);
-            double density_d2h_ms = ms_since(ts);
+            // CPU_DCT=0 (default): density stays on device — zero-copy wrap
+            //   into a ttnn::Tensor, fold initial_density on-device, solve DCT.
+            // CPU_DCT=1: density must reach the host for the Python DCT path.
+            double density_d2h_ms = 0;
+            double upload_ms = 0, compute_ms = 0, download_ms = 0;
+            static const bool use_cpu_dct =
+                (getenv("CPU_DCT") && std::string(getenv("CPU_DCT")) == "1");
+
+            // initial_density_map: host vector (kept for CPU_DCT=1 fallback)
+            // and device tensor (uploaded once, used for on-device ttnn::add).
+            static std::vector<float> id_cache;
+            static TT id_cache_tt;
+            static bool id_cache_tt_ready = false;
+            if (id_cache.empty()) {
+                id_cache.assign(shm_id, shm_id + (size_t)M * N);
+            }
+            if (!use_cpu_dct && !id_cache_tt_ready) {
+                // Upload as ROW_MAJOR (matching density_buf layout) so
+                // ttnn::add doesn't need a layout conversion.
+                TensorLayout id_layout(
+                    ttnn::DataType::FLOAT32,
+                    PageConfig(ttnn::Layout::ROW_MAJOR),
+                    tt::tt_metal::MemoryConfig{});
+                auto id_cpu = TT::from_vector<float>(
+                    id_cache,
+                    ttnn::TensorSpec(ttnn::Shape{(uint32_t)M, (uint32_t)N}, id_layout));
+                id_cache_tt = id_cpu.to_device(mesh_device.get());
+                id_cache_tt_ready = true;
+                printf("[server] id_cache_tt uploaded once (%dx%d, ROW_MAJOR)\n", M, N);
+                fflush(stdout);
+            }
+
+            if (use_cpu_dct) {
+                // CPU DCT path: D2H is required — the Python client runs DCT
+                ts = hrclock::now();
+                if (use_v13) {
+                    // V13 writes bf16 UNNORMALIZED density. Read bf16 bytes,
+                    // expand to fp32 in density_flat, then divide by bin_area
+                    // (1/(bsx*bsy)) to match V11's normalized contract.
+                    static std::vector<uint8_t> v13_bf16_bytes;
+                    if (v13_bf16_bytes.size() != (size_t)M * N * 2u) {
+                        v13_bf16_bytes.assign((size_t)M * N * 2u, 0);
+                    }
+                    EnqueueReadMeshBuffer(cq, v13_bf16_bytes, density_buf_v13, true);
+                    density_d2h_ms = ms_since(ts);
+                    const size_t MN = (size_t)M * N;
+                    const uint16_t* src =
+                        reinterpret_cast<const uint16_t*>(v13_bf16_bytes.data());
+                    float* df = density_flat.data();
+                    const float scale = 1.0f / ((float)bsx * (float)bsy);
+                    for (size_t i = 0; i < MN; ++i) {
+                        uint32_t bits = ((uint32_t)src[i]) << 16;
+                        float f;
+                        std::memcpy(&f, &bits, sizeof(f));
+                        df[i] = f * scale;
+                    }
+                } else {
+                    EnqueueReadMeshBuffer(cq, density_flat, density_buf, true);
+                    density_d2h_ms = ms_since(ts);
+                }
+
+                // NOTE: CPU_DCT=1 path does NOT fold initial_density_map on
+                // the server — the Python client adds (initial_density_map /
+                // bin_area) itself in scatter_ttnn_client.py before its CPU
+                // DCT. Adding here too would double-count and break
+                // convergence (V13 hits HPWL=169M, V11 has small bias).
+                (void)id_cache;
+            } else {
+                if (use_v13) {
+                    // V13's bf16 density_buf isn't compatible with the fp32
+                    // zero-copy TTNN DCT path today. Use CPU_DCT=1 with V13.
+                    printf("[server] FATAL: GATHER_MODE=v13_fpu requires CPU_DCT=1 "
+                           "(bf16 density not wired into TT-DCT zero-copy path).\n");
+                    fflush(stdout); std::exit(1);
+                }
+                // Zero-copy path: wrap density_buf as a TTNN tensor (no D2H),
+                // fold initial_density on-device, and solve DCT directly.
+                // The wrapper is created once and kept alive across iterations
+                // so its destructor doesn't deallocate density_buf's DRAM.
+                // The gather kernel overwrites density_buf's contents in-place
+                // each iteration — the wrapper just provides TTNN metadata.
+                static TT density_buf_tt;
+                static bool density_buf_tt_ready = false;
+                if (!density_buf_tt_ready) {
+                    density_buf_tt = wrap_mesh_buf_as_tensor(density_buf, M, N);
+                    density_buf_tt_ready = true;
+                }
+                auto rho_folded = ttnn::add(density_buf_tt, id_cache_tt);
+
+                ttnn_solver.solve_device(std::move(rho_folded), field_x, field_y,
+                                         mesh_device.get(),
+                                         upload_ms, compute_ms, download_ms);
+            }
 
             // ── Optional debug dump ──────────────────────────────────────────
             // EXPORT_DENSITY_PATH dumps EVERY iter (overwrite-style; the
             // smoke test expects this single-iter behavior).
-            // EXPORT_POS_PATH dumps cell positions ONLY at iter 100 (used
-            // for the iter-100 density correctness comparison).
+            // For CPU_DCT=0 the density_flat is stale — do a one-off D2H
+            // only when the env var is actually set (debug/test only).
+            // EXPORT_POS_PATH dumps cell positions at selected iters.
             {
                 const char* dump_path = getenv("EXPORT_DENSITY_PATH");
                 if (dump_path && dump_path[0]) {
+                    if (!use_cpu_dct) {
+                        EnqueueReadMeshBuffer(cq, density_flat, density_buf, true);
+                    }
                     FILE* f = fopen(dump_path, "wb");
                     if (f) {
                         fwrite(density_flat.data(), sizeof(float),
@@ -1695,9 +2144,6 @@ int main(int argc, char* argv[]) {
                 }
                 static uint32_t dump_iter_count = 0;
                 dump_iter_count++;
-                // Dump positions at multiple iters when EXPORT_POS_PATH is set.
-                // Filename: <path>.iter<N>.bin — so we can diff which cells
-                // are fixed (positions identical across iters) vs movable.
                 if (dump_iter_count == 1u || dump_iter_count == 50u || dump_iter_count == 100u) {
                     const char* pos_path = getenv("EXPORT_POS_PATH");
                     if (pos_path && pos_path[0]) {
@@ -1724,9 +2170,6 @@ int main(int argc, char* argv[]) {
                         }
                     }
                 }
-                // DEBUG: at iter 100, also dump route_buf (V11 scatter output)
-                // to a file. Lets us check whether ghost-corner tuples come
-                // from scatter (route_buf has them) or accum (route_buf clean).
                 const char* rb_path = getenv("EXPORT_ROUTE_BUF_PATH");
                 if (use_v11 && dump_iter_count == 100u && rb_path && rb_path[0]) {
                     uint64_t rb_size = (uint64_t)nc_all * (uint64_t)nc_all * route_pgsz_v11;
@@ -1747,38 +2190,6 @@ int main(int argc, char* argv[]) {
                         fflush(stdout);
                     }
                 }
-            }
-
-            // ── TTNN DCT solve ────────────────────────────────────────────────
-            // CPU_DCT=1 bypass: write the (already initial_density-folded)
-            // density_flat into the fx slot and let the Python client run
-            // the DCT/IDCT chain on CPU. Skip TTNN DCT entirely.
-            double upload_ms = 0, compute_ms = 0, download_ms = 0;
-            static const bool use_cpu_dct =
-                (getenv("CPU_DCT") && std::string(getenv("CPU_DCT")) == "1");
-            if (!use_cpu_dct) {
-                // Fold initial_density_map (fixed-terminal density,
-                // already normalized by bin area on the client) into the
-                // density returned by V11 scatter+gather (movable+filler
-                // only), BEFORE the TT DCT. Without this the field solve
-                // misses fixed terminals → cells don't repel them →
-                // HPWL diverges to ~150–185 M at adaptec1_512.
-                //
-                // The client writes shm_id once at server start; we cache
-                // it on first use to avoid re-reading 16 MB of shm per iter
-                // at grid 2048.
-                static std::vector<float> id_cache;
-                if (id_cache.empty()) {
-                    id_cache.assign(shm_id, shm_id + (size_t)M * N);
-                }
-                const size_t MN = (size_t)M * N;
-                float* df = density_flat.data();
-                const float* idc = id_cache.data();
-                for (size_t i = 0; i < MN; ++i) df[i] += idc[i];
-
-                ttnn_solver.solve(density_flat, field_x, field_y,
-                                  mesh_device.get(),
-                                  upload_ms, compute_ms, download_ms);
             }
 
             // ── Write fields directly into shm ────────────────────────────────
@@ -1806,7 +2217,8 @@ int main(int argc, char* argv[]) {
             tf[6] = (float)download_ms;
             tf[7] = (float)fw_ms;
             tf[8] = (float)total_ms;
-            ((uint32_t*)((char*)shm_ptr + 44))[0] = use_v11 ? 5u
+            ((uint32_t*)((char*)shm_ptr + 44))[0] = use_v13 ? 6u
+                                                  : use_v11 ? 5u
                                                   : use_v10 ? 4u
                                                   : use_v9 ? 3u
                                                   : (use_v8 ? 2u : (use_v7 ? 1u : 0u));
