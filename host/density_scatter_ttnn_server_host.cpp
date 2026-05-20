@@ -1024,11 +1024,15 @@ int main(int argc, char* argv[]) {
         // ── prog_v11_scatter: v4_reader + v4_compute + v11_scatter_dm ─────
         Program prog_v11_sc = CreateProgram();
         for (uint32_t i = 0; i < 4; ++i) make_cb_all(prog_v11_sc, i, 2);
-        make_cb_all(prog_v11_sc, 4, 1);
-        make_cb_all(prog_v11_sc, 5, 1);
+        // Output CBs deepened 1→2 slots: lets TRISC pipeline tile N+1's 18 SFPU
+        // passes while NCRISC is still routing tile N. Eliminates the OX0
+        // back-pressure stall (see memory/v11_ox0_backpressure.md).
+        // L1 cost: 18 CBs × 4096 B = 72 KB extra per core.
+        make_cb_all(prog_v11_sc, 4, 2);
+        make_cb_all(prog_v11_sc, 5, 2);
         for (uint32_t j = 0; j < MAX_OVERLAP; ++j) {
-            make_cb_all(prog_v11_sc, 6 + j, 1);
-            make_cb_all(prog_v11_sc, 14 + j, 1);
+            make_cb_all(prog_v11_sc, 6 + j, 2);
+            make_cb_all(prog_v11_sc, 14 + j, 2);
         }
         // V11 scatter scratch (matches kernel layout exactly).
         // NCRISC region: tile_to_core, staging_n[][], counts, offsets, shard_table, hdr_n.
