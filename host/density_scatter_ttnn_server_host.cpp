@@ -396,20 +396,84 @@ int main(int argc, char* argv[]) {
     //   v11=cell-centric tile-routed,
     //   v10=V6 scatter + bulk-async gather, v9=y-chunked scatter+SFPU gather,
     //   v8=SFPU (N≤512), v7=dense-scalar, v6=sparse ──
-    // Override with env var GATHER_MODE=v6|v7|v8|v9|v10|v11|v13_fpu|auto
+    // Override with env var GATHER_MODE=v6|v7|v8|v9|v10|v11|v11outer|v11outer_auto|v13_fpu|v14|v15|v16|auto
     std::string gather_mode_env = getenv("GATHER_MODE") ? getenv("GATHER_MODE") : "auto";
+    bool use_v16 = false;  // V16 Phase A: V15 kernels + hash-based tile ownership
+    bool use_v15 = false;  // V15 hybrid: V13 scatter + NCRISC-parallel V15 gather
+    bool use_v14 = false;  // V14 Architecture-A: writer-side FPU + reduce gather
     bool use_v13 = false;  // V13_fpu tile-record scatter + FPU matmul gather
     bool use_v11 = false;  // V11 cell-centric tile-routed (Phase 1: stub validator)
+    bool use_v11outer = false;  // V11 Stage B': SFPU outer-product on scatter side
+    bool use_v18 = false;  // V18: V11 + per-source hash-table pre-aggregation
+    bool use_v18outer = false;  // V18-outer: V18 hash-agg + V11outer SFPU outer-product
+    bool use_v19 = false;       // V19: direct L1 atomic-add gather (no separate gather kernel)
     bool use_v10 = false;  // V6 sparse scatter + V10 batched gather
     bool use_v9 = false;
     bool use_v8 = false;
     bool use_v7 = false;
-    if (gather_mode_env == "v13_fpu" || gather_mode_env == "v13") {
+    if (gather_mode_env == "v16") {
+        // V16 Phase A: hash-based tile ownership (V15_HANDOFF §10.3 /
+        // V16_PLAN.md §6.1 Path A). Reuses V15's gather kernels verbatim;
+        // the only difference is that build_hash_ownership() decorrelates
+        // tile_to_core from spatial position, so hot tiles get spread
+        // across many cores instead of concentrated on one. This is the
+        // smallest viable change that fixes V15's dense-2048 divergence.
+        use_v16 = true;
+        use_v15 = true;
+        use_v13 = true;
+    } else if (gather_mode_env == "v15") {
+        // V15 hybrid: reuses V13's scatter program but installs a new gather
+        // program that activates NCRISC as a parallel record-reader. Set
+        // use_v13 too so the scatter side wires up correctly; the gather
+        // branch below switches on use_v15.
+        use_v15 = true;
+        use_v13 = true;
+    } else if (gather_mode_env == "v14") {
+        use_v14 = true;
+    } else if (gather_mode_env == "v13_fpu" || gather_mode_env == "v13") {
         use_v13 = true;
     } else if (gather_mode_env == "v11") {
         // V11 cell-centric tile-routed scatter+accumulate. Replaces V6 sparse
         // scatter and V10 bulk gather entirely.
         use_v11 = true;
+    } else if (gather_mode_env == "v11outer") {
+        // V11 Stage B': SFPU pre-computes 64 outer products per cell, so the
+        // BRISC/NCRISC scatter side skips the inline ox*oy multiply. Uses
+        // v4_outer_compute.cpp + v11_outer_scatter_*_dm.cpp. Everything else
+        // (gather, hist, host dispatch shapes) is identical to V11.
+        use_v11 = true;
+        use_v11outer = true;
+    } else if (gather_mode_env == "v11outer_auto") {
+        // V11 with per-grid Stage B' routing. The 18-config sweep showed Stage
+        // B' is a clean win at N>=2048 (mean -19.7% scatter) but regresses at
+        // N=512 (+24%) due to SFPU dispatch overhead exceeding saved multiplies.
+        // 1024 is mixed (small designs win, large lose). Threshold N>=2048 is
+        // the only fully-safe routing per memory/v11_stage_bprime_sweep_outcome.
+        use_v11 = true;
+        use_v11outer = (N >= 2048);
+        printf("[server] v11outer_auto: N=%d → %s\n",
+               N, use_v11outer ? "Stage B' (v11outer)" : "V11 baseline");
+    } else if (gather_mode_env == "v18") {
+        // V18: V11 + per-source hash-table pre-aggregation on the scatter
+        // side. Reuses V11's gather + tile_to_core ownership verbatim; only
+        // the scatter kernel files differ. See docs/V18_HASHAGG_HANDOFF.md.
+        use_v11 = true;
+        use_v18 = true;
+        use_v11outer = false;
+    } else if (gather_mode_env == "v18outer") {
+        // V18-outer: V18 hash-agg + V11outer SFPU outer-product compute.
+        use_v11 = true;
+        use_v18 = true;
+        use_v18outer = true;
+        use_v11outer = true;  // for v4_outer_compute selection
+    } else if (gather_mode_env == "v19") {
+        // V19: direct L1 atomic-add gather. Scatter kernel atomic-adds
+        // fixed-point area into the owning core's L1 density slab; no
+        // separate gather kernel. Phase 1 = no V18 dedup, direct atomics.
+        use_v11 = true;
+        use_v19 = true;
+        use_v11outer = false;
+        use_v18 = false;
     } else if (gather_mode_env == "v10") {
         use_v10 = true;
     } else if (gather_mode_env == "v9") {
@@ -426,7 +490,14 @@ int main(int argc, char* argv[]) {
         use_v8 = ((uint32_t)N <= 512u);
         use_v9 = !use_v8;
     }
-    const char* gmode_str = use_v13 ? "v13-fpu-matmul"
+    const char* gmode_str = use_v16 ? "v16-hash-ownership"
+                          : use_v15 ? "v15-hybrid"
+                          : use_v14 ? "v14-arch-a"
+                          : use_v13 ? "v13-fpu-matmul"
+                          : use_v19 ? "v19-l1-atomic"
+                          : use_v18outer ? "v18-outer-hashagg+stageB"
+                          : use_v18 ? "v18-hashagg"
+                          : use_v11outer ? "v11-outer-stage-b-prime"
                           : use_v11 ? "v11-tile-routed"
                           : use_v10 ? "v10-bulk"
                           : use_v9 ? "v9-chunked"
@@ -469,6 +540,9 @@ int main(int argc, char* argv[]) {
 
     CoreCoord grid = mesh_device->compute_with_storage_grid_size();
     int nc_all = (int)(grid.x * grid.y);
+    printf("[server] grid = %ux%u  nc_all = %d (odd=%d)\n",
+           (unsigned)grid.x, (unsigned)grid.y, nc_all, nc_all & 1);
+    fflush(stdout);
 
     auto all_ccs = get_cores(grid, nc_all);
     auto mt_ccs  = get_cores(grid, (int)Mt);
@@ -835,6 +909,12 @@ int main(int argc, char* argv[]) {
     uint32_t M_tiles = (uint32_t)M / 32u;
     uint32_t N_tiles_v11 = (uint32_t)N / 32u;
     std::shared_ptr<MeshBuffer> tile_map_buf, route_buf, owned_lookup_buf, hist_buf, shard_table_buf, shard_reduce_buf, drop_buf;
+    // V19: hoist to outer scope so the per-iter readback can see them.
+    uint32_t v19_density_slab_bins_outer = 0u;
+    uint32_t v19_density_dram_pgsz_outer = 0u;
+    std::shared_ptr<MeshBuffer> v19_density_dram_outer;
+    MeshWorkload wl_v19_writeout;
+    bool v19_writeout_built = false;
     MeshWorkload wl_v11_scatter, wl_v11_accum, wl_v11_hist;
     // wl_v11_accum now performs the full gather (accum + reduce_a + reduce_bc)
     // in a single kernel using NOC semaphores for shard sync — keeping all 3
@@ -852,13 +932,73 @@ int main(int argc, char* argv[]) {
     uint32_t v11_max_hot_tiles = 0;
     // Constants for sharding
     constexpr uint32_t SHARD_BYTES = 16u;       // bytes per tile entry: byte0=K, 1..7=alts, 8..11=hot_tile_seq, 12..15=pad
-    constexpr uint32_t MAX_K       = 8u;        // K cap
-    constexpr uint32_t HOT_THRESHOLD = 5000u;   // tiles with count > this get K-way
+    // MAX_K (env-tunable, default 8). Hard cap on how many cores a hot tile
+    // can be sharded across. Bumping requires SHARD_BYTES is wide enough:
+    // 16 bytes = 1 K + 7 alt cores + 4 hot_seq + 4 pad → MAX_K hard limit is 8.
+    // For larger K we'd need a wider entry; keep ≤ 8 unless SHARD_BYTES grows.
+    auto env_uint = [](const char* name, uint32_t def) -> uint32_t {
+        const char* s = getenv(name);
+        if (s == nullptr || s[0] == '\0') return def;
+        int v = atoi(s);
+        return v <= 0 ? def : (uint32_t)v;
+    };
+    const uint32_t MAX_K = std::min(8u, env_uint("V11_MAX_K", 8u));
+    // HOT_THRESHOLD env-tunable. Default is effectively infinite (no sharding):
+    // The 2026-05-21 ON-vs-OFF sweep on all 6 2048-grid configs showed that the
+    // K=8 sharding scheme is net negative on 5 of 6 configs (wall-time loss of
+    // 4-30 sec per run) because the iter-0 shard_table becomes stale as cells
+    // migrate, and the small fp32 reorder it causes pushes DREAMPlace's
+    // convergence onto longer paths (sometimes to worse final HPWL too).
+    // Set V11_HOT_THRESHOLD=5000 (the old default) to re-enable for designs
+    // that benefit (e.g. bigblue3_2048 saves ~14s with sharding ON).
+    // See memory/v11_gather_sharding_investigation.md for the full analysis.
+    const uint32_t HOT_THRESHOLD = env_uint("V11_HOT_THRESHOLD", 100000000u);
     constexpr uint32_t TILE_BYTES_v11 = 32u * 32u * 4u;  // 4096 bytes per tile
     // CB slot headroom for shard slots (above n_owned_max). Same value used by
     // initial accum build and every periodic refresh so the JIT'd kernel binary
     // is identical and the cache hits.
-    constexpr uint32_t V11_CB_SLOT_HEADROOM = 2u * MAX_K;
+    // Env-tunable (default 2*MAX_K=16). Each slot is 4KB; max useful is ~200
+    // before L1 budget overflows.
+    const uint32_t V11_CB_SLOT_HEADROOM = env_uint("V11_CB_SLOT_HEADROOM", 2u * MAX_K);
+
+    // V18 hash-table sizing (see docs/V18_HASHAGG_HANDOFF.md). hash_bits=15 →
+    // 32K slots × 8 bytes = 256 KB per RISC = 512 KB per Tensix core for the
+    // two scatter RISCs. Clamp to [12, 16] (4K..64K slots) so slot indices fit
+    // in uint16 for the dirty-list optimization. FATAL guard catches over-
+    // budget configurations.
+    const uint32_t V18_HASH_BITS = std::min(16u, std::max(12u, env_uint("V18_HASH_BITS", 16u)));
+    // env_bool: explicit 0/1 parse (env_uint treats 0 as "unset", which is wrong for boolean toggles).
+    auto env_bool = [](const char* name, bool def) -> bool {
+        const char* s = getenv(name);
+        if (s == nullptr || s[0] == '\0') return def;
+        return s[0] != '0';  // "0" → false, anything else → true
+    };
+    // Default at hash_bits=16: bf16 area (saves L1) + dirty list (faster flush).
+    // bigblue1_2048 verified: bf16+dirty fits 1024 KB/core L1 and is ~7% faster
+    // than bf16+no_dirty. Smaller hash_bits keeps fp32+dirty (current).
+    const uint32_t V18_BF16_AREA = env_bool("V18_BF16_AREA", V18_HASH_BITS >= 16) ? 1u : 0u;
+    const uint32_t V18_NO_DIRTY  = env_bool("V18_NO_DIRTY",  false) ? 1u : 0u;
+    // Dirty-list size: 0 if disabled, else 2 bytes/slot.
+    const uint32_t v18_dirty_bytes_per_risc = V18_NO_DIRTY ? 0u : (1u << V18_HASH_BITS) * 2u;
+    if (use_v18) {
+        const uint32_t slot_bytes = V18_BF16_AREA ? 6u : 8u;
+        const uint32_t v18_table_bytes_per_risc = (1u << V18_HASH_BITS) * slot_bytes;
+        const uint32_t v18_total_per_risc = v18_table_bytes_per_risc + v18_dirty_bytes_per_risc;
+        printf("[server] V18: hash_bits=%u slots=%u slot_bytes=%u table_per_risc=%u KB dirty_per_risc=%u KB total_per_core=%u KB bf16_area=%u no_dirty=%u\n",
+               V18_HASH_BITS, 1u << V18_HASH_BITS, slot_bytes,
+               v18_table_bytes_per_risc >> 10,
+               v18_dirty_bytes_per_risc >> 10,
+               (v18_total_per_risc * 2u) >> 10,
+               V18_BF16_AREA, V18_NO_DIRTY);
+        if (v18_total_per_risc * 2u > 1024u * 1024u) {
+            printf("[server] FATAL: V18 L1 use (2 × %u KB) exceeds 1024 KB budget. "
+                   "Lower V18_HASH_BITS (current=%u) or set V18_BF16_AREA=1 V18_NO_DIRTY=1.\n",
+                   v18_total_per_risc >> 10, V18_HASH_BITS);
+            fflush(stdout);
+            std::exit(1);
+        }
+        fflush(stdout);
+    }
 
     // Per-core shard information (populated in v11_dbg_first from real shard_table)
     struct PerCoreShardInfo {
@@ -891,7 +1031,10 @@ int main(int argc, char* argv[]) {
     constexpr uint32_t V13_MAX_READ_RECORDS = 64u;
     constexpr uint32_t TILE_BF16_BYTES_v13 = 32u * 32u * 2u;
     std::shared_ptr<MeshBuffer> tile_map_buf_v13, route_buf_v13, owned_lookup_buf_v13,
-                                overflow_buf_v13, density_buf_v13;
+                                overflow_buf_v13, density_buf_v13, v15_stats_buf,
+                                v15_spill_buf;
+    uint32_t v15_spill_pgsz = 0u;   // size of ONE spill chunk = bucket_cap × 40 B
+    uint32_t v15_spill_chunks = 0u; // MAX_SPILL_CHUNKS per (receiver, owned_tile)
     MeshWorkload wl_v13_scatter, wl_v13_accum;
     std::vector<uint16_t> tile_to_core_v13;
     std::vector<std::vector<uint32_t>> core_to_tiles_v13;
@@ -905,6 +1048,29 @@ int main(int argc, char* argv[]) {
     uint32_t M_tiles_v13          = (uint32_t)M / 32u;
     uint32_t N_tiles_v13          = (uint32_t)N / 32u;
     uint32_t n_owned_max_v13      = 0u;
+
+    // ── V14 Architecture-A declarations ──────────────────────────────────────
+    constexpr uint32_t V14_MAX_OVERLAP    = 8u;
+    constexpr uint32_t V14_K_BATCH        = 32u;
+    constexpr uint32_t V14_N_INFLIGHT     = 4u;
+    constexpr uint32_t V14_PUSH_BATCH     = V14_N_INFLIGHT * V14_K_BATCH;  // 128
+    constexpr uint32_t V14_CB_OXY_DEPTH   = 8u;
+    constexpr uint32_t TILE_BF16_BYTES_v14 = 32u * 32u * 2u;
+    std::shared_ptr<MeshBuffer> tile_map_buf_v14, partial_buf_v14, density_buf_v14;
+    std::shared_ptr<MeshBuffer> v14_drop_buf;  // DROP-INSTRUMENTATION
+    uint32_t v14_drop_buf_pgsz_outer = 0u;
+    MeshWorkload wl_v14_scatter, wl_v14_reduce;
+    std::vector<uint16_t> tile_to_core_v14;
+    std::vector<std::vector<uint32_t>> core_to_tiles_v14;
+    uint32_t tile_map_bytes_v14   = 0u;
+    uint32_t tile_map_pgsz_v14    = 0u;
+    uint32_t partial_pgsz_v14     = TILE_BF16_BYTES_v14;  // 2048 per page
+    uint32_t density_pgsz_v14     = 0u;
+    uint32_t total_tiles_v14      = 0u;
+    uint32_t M_tiles_v14          = (uint32_t)M / 32u;
+    uint32_t N_tiles_v14          = (uint32_t)N / 32u;
+    uint32_t n_owned_max_v14      = 0u;
+
     if (use_v11) {
         // Build snake-fill ownership map on host
         v11::build_snake_fill_ownership(M_tiles, N_tiles_v11, (uint32_t)nc_all,
@@ -1034,6 +1200,14 @@ int main(int argc, char* argv[]) {
             make_cb_all(prog_v11_sc, 6 + j, 2);
             make_cb_all(prog_v11_sc, 14 + j, 2);
         }
+        // Stage B': add 8 outer-product CBs c_32..c_39, each with 8 tiles
+        // per batch (one per K value) × 2 buffering = 16 tile slots.
+        // Skip c_22..c_31 to avoid conflict with c_24 (V11 CB_SCRATCH).
+        if (use_v11outer) {
+            for (uint32_t j = 0; j < MAX_OVERLAP; ++j) {
+                make_cb_all(prog_v11_sc, 32 + j, 16);  // 8 K-tiles × 2 batches
+            }
+        }
         // V11 scatter scratch (matches kernel layout exactly).
         // NCRISC region: tile_to_core, staging_n[][], counts, offsets, shard_table, hdr_n.
         // Then ScatterShared, then BRISC region: staging_b[][], counts, offsets, hdr_b.
@@ -1041,8 +1215,15 @@ int main(int argc, char* argv[]) {
         constexpr uint32_t V11_TUPLE_BYTES   = 8u;  // packed V11Contrib
         constexpr uint32_t V11_HDR_BYTES     = 64u;
         constexpr uint32_t V11_SCATTER_SHARED_BYTES = 4u + 4u + 8u * 4u + 8u * 4u; // ~72 B
+        const uint32_t v18_slot_bytes      = V18_BF16_AREA ? 6u : 8u;
+        const uint32_t v18_table_bytes_per = use_v18 ? (1u << V18_HASH_BITS) * v18_slot_bytes : 0u;
+        const uint32_t v18_dirty_bytes_per_layout = (use_v18 && !V18_NO_DIRTY) ? (1u << V18_HASH_BITS) * 2u : 0u;
         uint32_t shared_state_off_sc = 0u;
         uint32_t brisc_state_off_sc = 0u;
+        uint32_t v18_hash_n_off_sc = 0u;
+        uint32_t v18_dirty_n_off_sc = 0u;
+        uint32_t v18_hash_b_off_sc = 0u;
+        uint32_t v18_dirty_b_off_sc = 0u;
         uint32_t v11_sc_scratch = 0u;
         {
             uint32_t off = 0u;
@@ -1057,6 +1238,16 @@ int main(int argc, char* argv[]) {
             off  = (off + 63u) & ~63u;
             off += V11_HDR_BYTES;                                       // hdr_scratch_n
             off  = (off + 63u) & ~63u;
+            if (use_v18) {
+                v18_hash_n_off_sc = off;
+                off += v18_table_bytes_per;                             // V18 NCRISC hash table
+                off  = (off + 63u) & ~63u;
+                if (!V18_NO_DIRTY) {
+                    v18_dirty_n_off_sc = off;
+                    off += v18_dirty_bytes_per_layout;                  // V18 NCRISC dirty list
+                    off  = (off + 63u) & ~63u;
+                }
+            }
             shared_state_off_sc = off;
             off += V11_SCATTER_SHARED_BYTES;                            // ScatterShared
             off  = (off + 63u) & ~63u;
@@ -1067,11 +1258,132 @@ int main(int argc, char* argv[]) {
             off += (uint32_t)nc_all * 4u;                              // dram_offset_b
             off  = (off + 63u) & ~63u;
             off += V11_HDR_BYTES;                                       // hdr_scratch_b
+            off  = (off + 63u) & ~63u;
+            if (use_v18) {
+                v18_hash_b_off_sc = off;
+                off += v18_table_bytes_per;                             // V18 BRISC hash table
+                off  = (off + 63u) & ~63u;
+                if (!V18_NO_DIRTY) {
+                    v18_dirty_b_off_sc = off;
+                    off += v18_dirty_bytes_per_layout;                  // V18 BRISC dirty list
+                    off  = (off + 63u) & ~63u;
+                }
+            }
             off += 64u;                                                 // safety gap
             v11_sc_scratch = (off + 31u) & ~31u;
         }
+
+        // V19 density slab layout: per-core slab of ⌈M*N/nc_all⌉ uint32 bins,
+        // followed by a small noc_coords[nc_all] table. Placed AFTER existing
+        // V11 scratch in CB_SCRATCH.
+        uint32_t v19_density_l1_off  = 0u;
+        uint32_t v19_density_slab_bins = 0u;
+        uint32_t v19_coord_pgsz      = 0u;
+        std::shared_ptr<MeshBuffer> v19_coord_buf;
+        std::shared_ptr<MeshBuffer> v19_density_dram;
+        uint32_t v19_density_dram_pgsz = 0u;
+        if (use_v19) {
+            v19_density_l1_off = v11_sc_scratch;
+            uint32_t total_bins = (uint32_t)M * (uint32_t)N;
+            // Pad slab_bins to multiple of 8 so density_slab_bytes is 32-byte
+            // aligned. Without this, density_dram_pgsz = (bytes + 31) & ~31
+            // would be larger than density_slab_bins*4, and the de-stride
+            // readback would slip out of sync (the strided[] vector is sized
+            // for unpadded bins so it consumes adjacent pages' padding bytes
+            // as if they were valid bin values).
+            uint32_t slab_bins_raw = (total_bins + (uint32_t)nc_all - 1u) / (uint32_t)nc_all;
+            v19_density_slab_bins = (slab_bins_raw + 7u) & ~7u;
+            uint32_t density_slab_bytes = v19_density_slab_bins * 4u;
+            uint32_t coords_bytes = ((uint32_t)nc_all * 4u + 31u) & ~31u;
+            v19_coord_pgsz = coords_bytes;
+            v11_sc_scratch = ((v19_density_l1_off + density_slab_bytes + coords_bytes + 31u) & ~31u);
+            printf("[server] V19: density_l1_off=%u slab_bins=%u (%u KB) coords_pgsz=%u\n",
+                   v19_density_l1_off, v19_density_slab_bins,
+                   density_slab_bytes >> 10, v19_coord_pgsz);
+            fflush(stdout);
+            // Allocate DRAM buffer for the worker_noc_coords table (one page).
+            DeviceLocalBufferConfig cfg{.page_size = v19_coord_pgsz,
+                                        .buffer_type = BufferType::DRAM};
+            ReplicatedBufferConfig rcfg{.size = v19_coord_pgsz};
+            v19_coord_buf = MeshBuffer::create(rcfg, cfg, mesh_device.get());
+            // Populate it: packed uint32 per core = (noc_y << 16) | noc_x.
+            // Pad to coord_pgsz / 4 entries.
+            std::vector<uint32_t> coords((size_t)(v19_coord_pgsz / 4u), 0u);
+            auto* dev0 = mesh_device->get_devices()[0];
+            for (int c = 0; c < nc_all; ++c) {
+                CoreCoord noc = dev0->worker_core_from_logical_core(all_ccs[c]);
+                coords[c] = ((uint32_t)noc.y << 16) | (uint32_t)noc.x;
+            }
+            EnqueueWriteMeshBuffer(cq, v19_coord_buf, coords, false);
+            Finish(cq);
+
+            // V19 DRAM density staging: per-core page of slab_bins uint32.
+            // Kernel writes its L1 slab here at end-of-scatter; host reads + de-strides.
+            v19_density_dram_pgsz = ((density_slab_bytes + 31u) & ~31u);
+            DeviceLocalBufferConfig dcfg{.page_size = v19_density_dram_pgsz,
+                                         .buffer_type = BufferType::DRAM};
+            ReplicatedBufferConfig drcfg{.size = (uint64_t)nc_all * v19_density_dram_pgsz};
+            v19_density_dram = MeshBuffer::create(drcfg, dcfg, mesh_device.get());
+            printf("[server] V19 DRAM staging: %u pages × %u B = %u KB\n",
+                   nc_all, v19_density_dram_pgsz, (nc_all * v19_density_dram_pgsz) >> 10);
+            fflush(stdout);
+            // Publish to outer scope for the per-iter readback.
+            v19_density_slab_bins_outer = v19_density_slab_bins;
+            v19_density_dram_pgsz_outer = v19_density_dram_pgsz;
+            v19_density_dram_outer      = v19_density_dram;
+
+            // Build the V19 writeout workload — runs after scatter Finish()
+            // to ensure all atomics have settled.
+            // CRITICAL: must match the scatter program's CB layout exactly so
+            // c_24's L1 base address (and therefore the density slab location)
+            // is identical between scatter and writeout programs.
+            Program prog_v19_wo = CreateProgram();
+            for (uint32_t i = 0; i < 4; ++i) make_cb_all(prog_v19_wo, i, 2);
+            make_cb_all(prog_v19_wo, 4, 2);
+            make_cb_all(prog_v19_wo, 5, 2);
+            for (uint32_t j = 0; j < MAX_OVERLAP; ++j) {
+                make_cb_all(prog_v19_wo, 6 + j, 2);
+                make_cb_all(prog_v19_wo, 14 + j, 2);
+            }
+            CreateCircularBuffer(prog_v19_wo, all_crs,
+                CircularBufferConfig(v11_sc_scratch, {{24u, tt::DataFormat::Float32}})
+                    .set_page_size(24u, v11_sc_scratch));
+            auto rk_wo = CreateKernel(prog_v19_wo,
+                KDIR + "v19_writeout_fp32_dm.cpp", all_crs,
+                DataMovementConfig{.processor = DataMovementProcessor::RISCV_0,
+                                   .noc = NOC::RISCV_0_default});
+            CreateKernel(prog_v19_wo,
+                KDIR + "v19_writeout_void_ncrisc.cpp", all_crs,
+                DataMovementConfig{.processor = DataMovementProcessor::RISCV_1,
+                                   .noc = NOC::RISCV_1_default});
+            const uint32_t v19_scale_bits = env_uint("V19_SCALE_BITS", 20u);
+            const uint32_t density_buf_pgsz =
+                (uint32_t)((uint64_t)N * sizeof(float));
+            for (int c = 0; c < nc_all; ++c) {
+                SetRuntimeArgs(prog_v19_wo, rk_wo, all_ccs[c], {
+                    v19_density_l1_off,
+                    v19_density_slab_bins,
+                    (uint32_t)density_buf->address(),  // write fp32 directly to density_buf
+                    density_buf_pgsz,
+                    (uint32_t)c,
+                    (uint32_t)M,
+                    (uint32_t)N,
+                    v19_scale_bits,
+                });
+            }
+            wl_v19_writeout.add_program(device_range, std::move(prog_v19_wo));
+            v19_writeout_built = true;
+        }
+
         printf("[server] V11 scatter scratch = %u KB (shared_off=%u, brisc_off=%u)\n",
                v11_sc_scratch / 1024u, shared_state_off_sc, brisc_state_off_sc);
+        if (use_v18) {
+            printf("[server] V18: hash_n_off=%u dirty_n_off=%u hash_b_off=%u dirty_b_off=%u table_per=%u KB dirty_per=%u KB\n",
+                   v18_hash_n_off_sc, v18_dirty_n_off_sc,
+                   v18_hash_b_off_sc, v18_dirty_b_off_sc,
+                   v18_table_bytes_per >> 10, v18_dirty_bytes_per_layout >> 10);
+            fflush(stdout);
+        }
         if (v11_sc_scratch >= 1536u * 1024u) {
             printf("[server] FATAL: V11 scatter scratch %u KB exceeds L1 budget\n",
                    v11_sc_scratch / 1024u);
@@ -1085,9 +1397,36 @@ int main(int argc, char* argv[]) {
         std::vector<UnpackToDestMode> v11_unpack(NUM_CIRCULAR_BUFFERS,
                                                  UnpackToDestMode::Default);
         for (int i = 0; i < 4; ++i) v11_unpack[i] = UnpackToDestMode::UnpackToDestFp32;
+        // V11-outer: the outer-product compute kernel ALSO unpacks from
+        // c_6..c_21 (ox/oy intermediates) for the 64 multiplies. Those CBs
+        // are Float32, so the unpacker must be in fp32-to-DST mode for them
+        // too. Without this, the unpacker would do a bf16 conversion that
+        // garbles the ox/oy values feeding the outer product.
+        if (use_v11outer) {
+            for (uint32_t j = 0; j < MAX_OVERLAP; ++j) {
+                v11_unpack[6 + j]  = UnpackToDestMode::UnpackToDestFp32;
+                v11_unpack[14 + j] = UnpackToDestMode::UnpackToDestFp32;
+            }
+        }
 
         // BRISC kernel does combined v4_reader + scatter_b (Step 5 parallel scatter).
-        auto rk_v11 = CreateKernel(prog_v11_sc, KDIR + "v11_scatter_b_dm.cpp", all_crs,
+        // V11-outer uses sibling files; V18 also uses sibling files (hash-agg);
+        // V18-outer combines both (hash-agg with precomputed outer-product).
+        const std::string brisc_kernel_file =
+              use_v19      ? "v19_scatter_b_dm.cpp"
+            : use_v18outer ? "v18_outer_scatter_b_dm.cpp"
+            : use_v18      ? "v18_scatter_b_dm.cpp"
+            : use_v11outer ? "v11_outer_scatter_b_dm.cpp"
+            :                "v11_scatter_b_dm.cpp";
+        const std::string compute_kernel_file = use_v11outer
+            ? "v4_outer_compute.cpp" : "v4_compute.cpp";
+        const std::string ncrisc_kernel_file =
+              use_v19      ? "v19_scatter_dm.cpp"
+            : use_v18outer ? "v18_outer_scatter_dm.cpp"
+            : use_v18      ? "v18_scatter_dm.cpp"
+            : use_v11outer ? "v11_outer_scatter_dm.cpp"
+            :                "v11_scatter_dm.cpp";
+        auto rk_v11 = CreateKernel(prog_v11_sc, KDIR + brisc_kernel_file, all_crs,
             DataMovementConfig{.processor = DataMovementProcessor::RISCV_0,
                                .noc = NOC::RISCV_0_default});
         // G-PRESCALE: V11 scatter pre-multiplies ox and oy outputs by
@@ -1096,12 +1435,12 @@ int main(int argc, char* argv[]) {
         // gather kernel's V11A-SCALE phase then becomes a no-op.
         std::map<std::string, std::string> v4_defs_v11 = v4_defs;
         v4_defs_v11["V4_OX_OY_SCALE_F"] = to_float_literal(std::sqrt(inv_ba));
-        auto ck_v11 = CreateKernel(prog_v11_sc, KDIR + "v4_compute.cpp", all_crs,
+        auto ck_v11 = CreateKernel(prog_v11_sc, KDIR + compute_kernel_file, all_crs,
             ComputeConfig{.fp32_dest_acc_en = true,
                           .unpack_to_dest_mode = v11_unpack,
                           .math_approx_mode = false,
                           .defines = v4_defs_v11});
-        auto sk_v11 = CreateKernel(prog_v11_sc, KDIR + "v11_scatter_dm.cpp", all_crs,
+        auto sk_v11 = CreateKernel(prog_v11_sc, KDIR + ncrisc_kernel_file, all_crs,
             DataMovementConfig{.processor = DataMovementProcessor::RISCV_1,
                                .noc = NOC::RISCV_1_default});
 
@@ -1122,7 +1461,8 @@ int main(int argc, char* argv[]) {
             uint32_t drop_a = (uint32_t)drop_buf->address();
 
             // BRISC (combined reader + scatter_b). my_writer_id = my_core_id + nc_all.
-            SetRuntimeArgs(prog_v11_sc, rk_v11, cc, {
+            // V18 appends two extra args (24,25) for hash table offset+bits.
+            std::vector<uint32_t> brisc_args = {
                 px_a, py_a, sx_a, sy_a, tile_pgsz, first, my_n,    // 0..6 reader
                 tile_map_bytes_v11,                                 // 7
                 (uint32_t)c,                                        // 8 (unused on BRISC; placeholder)
@@ -1135,10 +1475,28 @@ int main(int argc, char* argv[]) {
                 shared_state_off_sc, brisc_state_off_sc,            // 20,21
                 sc_tables_ready_sem,                                // 22
                 drop_a,                                             // 23 drop_dram (BRISC drop slot = c + nc_all)
-            });
+            };
+            if (use_v18) {
+                brisc_args.push_back(v18_hash_b_off_sc);            // 24 hash table L1 offset
+                brisc_args.push_back(V18_HASH_BITS);                // 25 hash bits (log2 slots)
+                brisc_args.push_back(v18_dirty_b_off_sc);           // 26 dirty list L1 offset (unused if no_dirty)
+                brisc_args.push_back(V18_BF16_AREA);                // 27 bf16 area flag
+                brisc_args.push_back(V18_NO_DIRTY);                 // 28 no-dirty flag
+            }
+            if (use_v19) {
+                brisc_args.push_back(v19_density_l1_off);           // 24 density slab L1 offset
+                brisc_args.push_back(v19_density_slab_bins);        // 25 slab bin count
+                brisc_args.push_back(env_uint("V19_SCALE_BITS", 20u));  // 26 scale_bits (env-tunable, default 2^20)
+                brisc_args.push_back(0u);                           // 27 dram_dst (BRISC: unused)
+                brisc_args.push_back(0u);                           // 28 dram_pgsz
+                brisc_args.push_back((uint32_t)c);                  // 29 my_core_idx
+                brisc_args.push_back((uint32_t)nc_all);             // 30 nc_all
+            }
+            SetRuntimeArgs(prog_v11_sc, rk_v11, cc, brisc_args);
             SetRuntimeArgs(prog_v11_sc, ck_v11, cc, {my_n});
             // NCRISC scatter. my_writer_id = my_core_id (existing slot).
-            SetRuntimeArgs(prog_v11_sc, sk_v11, cc, {
+            // V18 appends two extra args (23,24) for hash table offset+bits.
+            std::vector<uint32_t> ncrisc_args = {
                 tm_a, tile_map_pgsz_v11, tile_map_bytes_v11,        // 0..2
                 (uint32_t)c, (uint32_t)nc_all,                      // 3,4
                 M_tiles, N_tiles_v11,                               // 5,6
@@ -1152,7 +1510,44 @@ int main(int argc, char* argv[]) {
                 shared_state_off_sc, brisc_state_off_sc,            // 19,20
                 sc_tables_ready_sem,                                // 21
                 drop_a,                                             // 22 drop_dram
-            });
+            };
+            if (use_v18) {
+                ncrisc_args.push_back(v18_hash_n_off_sc);           // 23 hash table L1 offset
+                ncrisc_args.push_back(V18_HASH_BITS);               // 24 hash bits (log2 slots)
+                ncrisc_args.push_back(v18_dirty_n_off_sc);          // 25 dirty list L1 offset (unused if no_dirty)
+                ncrisc_args.push_back(V18_BF16_AREA);               // 26 bf16 area flag
+                ncrisc_args.push_back(V18_NO_DIRTY);                // 27 no-dirty flag
+            }
+            if (use_v19) {
+                ncrisc_args.push_back(v19_density_l1_off);          // 23 density slab L1 offset
+                ncrisc_args.push_back(v19_density_slab_bins);       // 24 slab bin count
+                ncrisc_args.push_back((uint32_t)v19_coord_buf->address()); // 25 noc_coord DRAM addr
+                ncrisc_args.push_back(v19_coord_pgsz);              // 26 noc_coord page size
+                ncrisc_args.push_back(env_uint("V19_SCALE_BITS", 20u));  // 27 scale_bits
+                ncrisc_args.push_back((uint32_t)v19_density_dram->address()); // 28 DRAM staging base
+                ncrisc_args.push_back(v19_density_dram_pgsz);       // 29 page size per core
+                ncrisc_args.push_back((uint32_t)c);                 // 30 my_core_idx
+            }
+            SetRuntimeArgs(prog_v11_sc, sk_v11, cc, ncrisc_args);
+        }
+        // V19: broadcast worker noc_coords table as common runtime args.
+        // Each scatter kernel reads via get_common_arg_val<uint32_t>(i) for
+        // i in [0, nc_all). Replaces the prior noc_async_read of coord_buf,
+        // which corrupted at 2048 grid (110 cores simultaneously reading
+        // page 0 of a single-page DRAM buffer into a high-L1-offset
+        // destination silently returned shifted data and stalled
+        // noc_async_atomic_barrier).
+        if (use_v19) {
+            std::vector<uint32_t> v19_common_coords((size_t)nc_all, 0u);
+            auto* dev0 = mesh_device->get_devices()[0];
+            for (int c = 0; c < nc_all; ++c) {
+                CoreCoord noc = dev0->worker_core_from_logical_core(all_ccs[c]);
+                v19_common_coords[c] = ((uint32_t)noc.y << 16) | (uint32_t)noc.x;
+            }
+            // Only NCRISC reads common args (it populates L1 noc_coords once
+            // per kernel launch; BRISC reads noc_coords from L1 after the
+            // tables_ready_sem signals NCRISC has finished INIT).
+            SetCommonRuntimeArgs(prog_v11_sc, sk_v11, v19_common_coords);
         }
         wl_v11_scatter.add_program(device_range, std::move(prog_v11_sc));
 
@@ -1339,8 +1734,18 @@ int main(int argc, char* argv[]) {
     // Density buffer is bf16, UNNORMALIZED — host divides by bin_area on D2H.
     // ══════════════════════════════════════════════════════════════
     if (use_v13) {
-        v11::build_snake_fill_ownership(M_tiles_v13, N_tiles_v13, (uint32_t)nc_all,
-                                        tile_to_core_v13, core_to_tiles_v13);
+        if (use_v16) {
+            // V16: hash-based ownership decorrelates tile_to_core from
+            // spatial position. Hot tiles (concentrated near design center
+            // in real ISPD2005 circuits) get spread across many cores,
+            // eliminating the per-core hot-bucket overflow that causes
+            // V15's dense-2048 divergence. See V16_PLAN.md §6.1 Path A.
+            v11::build_hash_ownership(M_tiles_v13, N_tiles_v13, (uint32_t)nc_all,
+                                      tile_to_core_v13, core_to_tiles_v13);
+        } else {
+            v11::build_snake_fill_ownership(M_tiles_v13, N_tiles_v13, (uint32_t)nc_all,
+                                            tile_to_core_v13, core_to_tiles_v13);
+        }
         total_tiles_v13 = M_tiles_v13 * N_tiles_v13;
         tile_map_bytes_v13 = total_tiles_v13 * sizeof(uint16_t);
         tile_map_pgsz_v13  = (tile_map_bytes_v13 + 31u) & ~31u;
@@ -1375,6 +1780,10 @@ int main(int argc, char* argv[]) {
         route_buf_v13        = make_buf((uint32_t)route_total, route_pgsz_v13);
         overflow_buf_v13     = make_buf(overflow_total, overflow_pgsz_v13);
         density_buf_v13      = make_buf(density_total_v13, density_pgsz_v13);
+        // V15 stats buffer: per-core debug dump. 256 bytes per core (64 u32
+        // slots, used for per-tile bucket counts and overflow indicators).
+        v15_stats_buf        = make_buf((uint32_t)nc_all * 256u, 256u);
+        // V15 SPILL buffer is allocated below after v15_bucket_cap is known.
 
         // Upload tile_to_core.
         {
@@ -1508,21 +1917,177 @@ int main(int argc, char* argv[]) {
         }
         wl_v13_scatter.add_program(device_range, std::move(prog_v13_sc));
 
-        // ── PROGRAM 2: V13 accumulate ──────────────────────────────────────
+        // ── PROGRAM 2: V13 or V15 accumulate ───────────────────────────────
         Program prog_v13_ac = CreateProgram();
-        // bf16 CBs: c_0 OX (2 tiles), c_1 OY (2 tiles), c_16 DENSE (2 tiles).
+        // bf16 CBs.
+        // V13: c_0 OX, c_1 OY, c_16 DENSE.
+        // V15: also c_2 OX_N, c_3 OY_N — NCRISC parallel reader's CB pair.
         auto make_cb_bf16_v13 = [&](uint32_t idx, uint32_t n) {
             CreateCircularBuffer(prog_v13_ac, all_crs,
                 CircularBufferConfig(n * TILE_BF16_BYTES_v13,
                                      {{idx, tt::DataFormat::Float16_b}})
                     .set_page_size(idx, TILE_BF16_BYTES_v13));
         };
-        make_cb_bf16_v13(0,  V13_CB_OXY_DEPTH);   // CB_OX (OPT-1: depth 8 for 4-batch double-buffer)
+        make_cb_bf16_v13(0,  V13_CB_OXY_DEPTH);   // CB_OX (shared between BRISC and TRISC)
         make_cb_bf16_v13(1,  V13_CB_OXY_DEPTH);   // CB_OY
         make_cb_bf16_v13(16, 2);                  // CB_DENSE
 
+        // L1 scratch layout: V13 uses owned_lookup + hdrs + inbound_buf +
+        // per_tile_staging[n_owned × PUSH_BATCH] + dense_row_major.
+        // V15 uses owned_lookup + hdrs(BRISC) + inbound_buf(BRISC) +
+        // staging(BRISC, single tile) + dense_row_major +
+        // hdrs(NCRISC) + inbound_buf(NCRISC) + staging(NCRISC).
         uint32_t ac_scratch_v13 = 0u;
-        {
+        uint32_t ncrisc_scratch_off_v15 = 0u;
+        uint32_t v15_bucket_cap = 0u;
+        uint32_t v15_ncrisc_bucket_off = 0u;  // absolute L1 offset of bucket_n
+        bool v15_brisc_only = false;
+        if (use_v15) {
+            // V15 single-pass bucket-by-tile-id layout. BUCKET_CAP is sized
+            // dynamically to fit L1 — small grids (n_owned small) get a HUGE
+            // cap, large grids (n_owned large) get a smaller cap that's still
+            // enough to hold the average + slack records per owned tile.
+            //
+            // Per-RISC fixed overhead (everything except buckets):
+            //   owned_lookup   : total_tiles × 2 B
+            //   hdrs           : nc_all × 64 B
+            //   inbound_buf    : V13_MAX_READ_RECORDS × 40 B (= 2.5 KB)
+            //   bucket_*_count : n_owned × 4 B
+            //   staging        : V13_PUSH_BATCH × 40 B (= 5 KB)
+            //   dense_row_major (BRISC only) : 2 KB
+            //
+            // Total L1 budget for accum = 1100 KB (rest reserved for CBs and FW).
+            // Total cross-RISC bucket budget = (1100 KB - 2 * fixed_overhead).
+            // BUCKET_CAP = (bucket_budget / 2 RISCs) / (n_owned × 40 B).
+            uint32_t fixed_per_risc = 0u;
+            fixed_per_risc += total_tiles_v13 * (uint32_t)sizeof(uint16_t);
+            fixed_per_risc = (fixed_per_risc + 63u) & ~63u;
+            fixed_per_risc += (uint32_t)nc_all * V13_PAGE_HDR_BYTES;
+            fixed_per_risc = (fixed_per_risc + 63u) & ~63u;
+            fixed_per_risc += V13_MAX_READ_RECORDS * V13_RECORD_BYTES;
+            fixed_per_risc = (fixed_per_risc + 63u) & ~63u;
+            fixed_per_risc += n_owned_max_v13 * (uint32_t)sizeof(uint32_t);
+            fixed_per_risc = (fixed_per_risc + 63u) & ~63u;
+            fixed_per_risc += V13_PUSH_BATCH * V13_RECORD_BYTES;
+            fixed_per_risc = (fixed_per_risc + 63u) & ~63u;
+            // BRISC has dense_row_major; pad both equally for simplicity.
+            fixed_per_risc += TILE_BF16_BYTES_v13;
+            fixed_per_risc = (fixed_per_risc + 63u) & ~63u;
+            fixed_per_risc += 256u;  // safety
+
+            uint32_t total_fixed = 2u * fixed_per_risc;
+            // V15 scratch budget: 1.5 MB L1 minus CBs (~36 KB for 3 bf16 CBs)
+            // and FW (~80 KB). 1350 KB verified to fit at all grids.
+            uint32_t budget = 1350u * 1024u;
+            uint32_t bucket_budget = (budget > total_fixed) ? (budget - total_fixed) : 0u;
+            // Per RISC bucket budget. We give BRISC ALL the bucket budget for
+            // small n_owned configs where the hot tile can hold > cap records
+            // (denser circuits like adaptec3 / bigblue3). Dropping records
+            // there breaks convergence. For larger n_owned (where records
+            // spread thin across many owned tiles), 50/50 split keeps the
+            // NCRISC parallel-reader win without overflow.
+            // brisc_only=true at small n_owned (where BRISC has enough L1 to
+            // hold the full bucket). Dual mode would halve pass 1 but doubles
+            // pass 2 overhead, net slower at 512 grid.
+            uint32_t per_risc_bucket;
+            if (n_owned_max_v13 <= 4u) {
+                per_risc_bucket = bucket_budget;
+                v15_brisc_only = true;
+            } else {
+                per_risc_bucket = bucket_budget / 2u;
+                v15_brisc_only = false;
+            }
+            uint32_t per_tile_bytes = n_owned_max_v13 * V13_RECORD_BYTES;
+            uint32_t cap = (per_tile_bytes > 0u)
+                           ? (per_risc_bucket / per_tile_bytes) : 4096u;
+            if (cap < 64u)    cap = 64u;     // never let cap go too low
+            if (cap > 16384u) cap = 16384u;  // hard upper bound (was 4096)
+            // SPILL WRITES are CHUNKED to ≤4 KB inside the kernel, so a single
+            // call no longer hits the noc_async_write large-size hang. Cap is
+            // still limited to keep L1 bucket size manageable and DRAM spill_buf
+            // bounded. 4096 was the pre-spill V15 default and worked well.
+            constexpr uint32_t MAX_BUCKET_CAP = 4096u;
+            if (cap > MAX_BUCKET_CAP) cap = MAX_BUCKET_CAP;
+            if (const char* e = getenv("V15_CAP_OVERRIDE")) {
+                uint32_t v = (uint32_t)atoi(e);
+                if (v > 0u) cap = v;
+            }
+            v15_bucket_cap = cap;
+
+            // Now compute the actual scratch layout.
+            uint32_t off = 0u;
+            // BRISC region
+            off += total_tiles_v13 * (uint32_t)sizeof(uint16_t); off = (off + 63u) & ~63u; // owned_lookup
+            off += (uint32_t)nc_all * V13_PAGE_HDR_BYTES;        off = (off + 63u) & ~63u; // hdrs
+            off += V13_MAX_READ_RECORDS * V13_RECORD_BYTES;      off = (off + 63u) & ~63u; // inbound_buf
+            off += n_owned_max_v13 * v15_bucket_cap * V13_RECORD_BYTES; off = (off + 63u) & ~63u; // bucket_b
+            off += n_owned_max_v13 * sizeof(uint32_t);           off = (off + 63u) & ~63u; // bucket_b_count
+            off += n_owned_max_v13 * sizeof(uint32_t);           off = (off + 63u) & ~63u; // spill_chunks_b
+            off += V13_PUSH_BATCH * V13_RECORD_BYTES;            off = (off + 63u) & ~63u; // staging
+            off += TILE_BF16_BYTES_v13;                          off = (off + 63u) & ~63u; // dense_row_major
+            ncrisc_scratch_off_v15 = off;
+            if (v15_brisc_only) {
+                // No NCRISC L1 region in brisc-only mode (NCRISC just sets the
+                // sem and exits). v15_ncrisc_bucket_off is unused in this mode
+                // (BRISC kernel skips the bucket_n drain).
+                v15_ncrisc_bucket_off = 0u;
+                off += 512u;
+            } else {
+                // NCRISC region: owned_lookup_n, hdrs_n, inbound_buf_n,
+                // bucket_n, bucket_n_count, spill_chunks_n.
+                off += total_tiles_v13 * (uint32_t)sizeof(uint16_t); off = (off + 63u) & ~63u;
+                off += (uint32_t)nc_all * V13_PAGE_HDR_BYTES;        off = (off + 63u) & ~63u;
+                off += V13_MAX_READ_RECORDS * V13_RECORD_BYTES;      off = (off + 63u) & ~63u;
+                v15_ncrisc_bucket_off = off;  // ← BRISC reads from here in pass 2
+                off += n_owned_max_v13 * v15_bucket_cap * V13_RECORD_BYTES; off = (off + 63u) & ~63u;
+                off += n_owned_max_v13 * sizeof(uint32_t);           off = (off + 63u) & ~63u; // bucket_n_count
+                off += n_owned_max_v13 * sizeof(uint32_t);           off = (off + 63u) & ~63u; // spill_chunks_n
+                off += 512u;
+            }
+            ac_scratch_v13 = (off + 31u) & ~31u;
+            printf("[server] V15 bucket_cap=%u (n_owned_max=%u, total_fixed=%u KB)\n",
+                   v15_bucket_cap, n_owned_max_v13, total_fixed / 1024u);
+            fflush(stdout);
+
+            // V15 DRAM spill buffer: when a per-(receiver, owned_tile) L1
+            // bucket fills to bucket_cap, the kernel writes the bucket to
+            // DRAM and resets the L1 count. Pass-2 drain reads spill chunks
+            // back, then drains the L1 residual. This eliminates the silent
+            // record drops that broke convergence on adaptec3 / bigblue3.
+            //
+            // Layout:
+            //   spill_buf[my_recv_id × n_owned_max × MAX_SPILL_CHUNKS
+            //             + local_tile_idx × MAX_SPILL_CHUNKS
+            //             + chunk_idx]
+            //   where each spill chunk = bucket_cap × 40 bytes.
+            //
+            // Adaptive sizing: at 512-grid with cap≈10K and n_owned≈3,
+            // MAX_SPILL_CHUNKS=4 is plenty (largest hot tile ~25K records);
+            // at 2048-grid with cap≈400 and n_owned≈38, MAX_SPILL_CHUNKS=8
+            // (hot tiles can have ~3K records per RISC).
+            // adaptec3_512 hot tiles have ~25K records. With cap=2048, we need
+            // ≥16 chunks (= 32K capacity) to capture them all. At 2048-grid
+            // (cap≈400, n_owned≈38), use 16 too — same DRAM cost.
+            v15_spill_chunks = 16u;
+            v15_spill_pgsz   = ((v15_bucket_cap * V13_RECORD_BYTES) + 31u) & ~31u;
+            // 2× — BRISC and NCRISC each get a half of the spill_buf so they
+            // never overwrite each other's spilled chunks. BRISC uses lower
+            // half (offset 0); NCRISC uses upper half (offset nc_all × ...).
+            uint64_t spill_total = 2ull * (uint64_t)nc_all
+                                 * (uint64_t)n_owned_max_v13
+                                 * (uint64_t)v15_spill_chunks
+                                 * (uint64_t)v15_spill_pgsz;
+            if (spill_total > 0xFFFFFFFFull) {
+                printf("[server] FATAL: V15 spill_buf %llu B > 4 GB\n",
+                       (unsigned long long)spill_total);
+                fflush(stdout); std::exit(1);
+            }
+            v15_spill_buf = make_buf((uint32_t)spill_total, v15_spill_pgsz);
+            printf("[server] V15 spill_buf: %llu MB (max_chunks=%u, page=%u B)\n",
+                   (unsigned long long)(spill_total / (1024u*1024u)),
+                   v15_spill_chunks, v15_spill_pgsz);
+            fflush(stdout);
+        } else {
             uint32_t off = 0u;
             off += total_tiles_v13 * (uint32_t)sizeof(uint16_t); off = (off + 63u) & ~63u;
             off += (uint32_t)nc_all * V13_PAGE_HDR_BYTES;        off = (off + 63u) & ~63u;
@@ -1534,10 +2099,12 @@ int main(int argc, char* argv[]) {
             off += 256u;                                          // safety
             ac_scratch_v13 = (off + 31u) & ~31u;
         }
-        printf("[server] V13 accum scratch = %u KB (max_owned=%u)\n",
+        printf("[server] %s accum scratch = %u KB (max_owned=%u)\n",
+               use_v15 ? "V15" : "V13",
                ac_scratch_v13 / 1024u, n_owned_max_v13);
         if (ac_scratch_v13 >= 1536u * 1024u) {
-            printf("[server] FATAL: V13 accum scratch %u KB exceeds L1\n",
+            printf("[server] FATAL: %s accum scratch %u KB exceeds L1\n",
+                   use_v15 ? "V15" : "V13",
                    ac_scratch_v13 / 1024u);
             fflush(stdout); std::exit(1);
         }
@@ -1546,23 +2113,65 @@ int main(int argc, char* argv[]) {
             CircularBufferConfig(ac_scratch_v13, {{24u, tt::DataFormat::Float32}})
                 .set_page_size(24u, ac_scratch_v13));
 
-        auto ak_v13_b = CreateKernel(prog_v13_ac, KDIR + "v13_accum_brisc_mt.cpp", all_crs,
+        // Pick kernel source files based on gather mode.
+        const std::string brisc_kernel = use_v15 ? "v15_gather_brisc.cpp"
+                                                  : "v13_accum_brisc_mt.cpp";
+        const std::string ncrisc_kernel = use_v15 ? "v15_gather_ncrisc.cpp"
+                                                   : "v13_accum_ncrisc_void.cpp";
+        const std::string compute_kernel = use_v15 ? "v15_gather_compute.cpp"
+                                                    : "v13_accum_compute_mt.cpp";
+
+        // V15 spill is gated by compile-time define V15_SPILL_ENABLED. We only
+        // enable it at small n_owned (≤16) where bucket overflow can happen but
+        // total bucket loop iterations are few. At n_owned>16 (2048-grid configs),
+        // records spread thin across many owned tiles so overflow is impossible
+        // (cap=438 vs avg ~200 records/bucket), and emitting the flush code in
+        // the binary causes a kernel-side deadlock — even when never executed.
+        std::map<std::string, std::string> v15_brisc_defines;
+        std::map<std::string, std::string> v15_ncrisc_defines;
+        bool v15_force_no_spill = (getenv("V15_FORCE_NO_SPILL") &&
+                                   std::string(getenv("V15_FORCE_NO_SPILL")) == "1");
+        // Spill enabled only when n_owned ≤ 16. At n_owned > 16 (2048-grid)
+        // the spill lambda's binary presence causes a kernel-side completion-
+        // queue deadlock even when never executed — root cause unknown, likely
+        // I-cache / NOC state interaction. Chunked-write fix only helps the
+        // large-write hang (small-grid case), not the high-n_owned case.
+        if (use_v15 && n_owned_max_v13 <= 16u && !v15_force_no_spill) {
+            v15_brisc_defines["V15_SPILL_ENABLED"] = "1";
+            v15_ncrisc_defines["V15_SPILL_ENABLED"] = "1";
+        }
+        if (use_v15) {
+            printf("[server] V15 spill compile-flag: %s\n",
+                   v15_brisc_defines.count("V15_SPILL_ENABLED") ? "ENABLED" : "DISABLED");
+            fflush(stdout);
+        }
+
+        auto ak_v13_b = CreateKernel(prog_v13_ac, KDIR + brisc_kernel, all_crs,
             DataMovementConfig{.processor = DataMovementProcessor::RISCV_0,
-                               .noc = NOC::RISCV_0_default});
-        auto ak_v13_n = CreateKernel(prog_v13_ac, KDIR + "v13_accum_ncrisc_void.cpp", all_crs,
+                               .noc = NOC::RISCV_0_default,
+                               .defines = v15_brisc_defines});
+        auto ak_v13_n = CreateKernel(prog_v13_ac, KDIR + ncrisc_kernel, all_crs,
             DataMovementConfig{.processor = DataMovementProcessor::RISCV_1,
-                               .noc = NOC::RISCV_1_default});
-        auto ak_v13_c = CreateKernel(prog_v13_ac, KDIR + "v13_accum_compute_mt.cpp", all_crs,
+                               .noc = NOC::RISCV_1_default,
+                               .defines = v15_ncrisc_defines});
+        auto ak_v13_c = CreateKernel(prog_v13_ac, KDIR + compute_kernel, all_crs,
             ComputeConfig{.math_fidelity = MathFidelity::HiFi4,
                           .fp32_dest_acc_en = true,
                           .math_approx_mode = false});
 
         uint32_t ol_a_v13 = (uint32_t)owned_lookup_buf_v13->address();
         uint32_t da_a_v13 = (uint32_t)density_buf_v13->address();
+
+        // V15 needs an extra semaphore for NCRISC→BRISC bucketing-done signal.
+        uint32_t v15_ncrisc_done_sem = 0u;
+        if (use_v15) {
+            v15_ncrisc_done_sem = CreateSemaphore(prog_v13_ac, all_crs, 0u);
+        }
+
         for (int c = 0; c < nc_all; ++c) {
             auto cc = all_ccs[c];
             uint32_t n_owned = (uint32_t)core_to_tiles_v13[c].size();
-            std::vector<uint32_t> args = {
+            std::vector<uint32_t> args_brisc = {
                 ol_a_v13, owned_lookup_pgsz_v13,
                 (uint32_t)c, (uint32_t)nc_all,
                 M_tiles_v13, N_tiles_v13,
@@ -1571,31 +2180,361 @@ int main(int argc, char* argv[]) {
                 da_a_v13, density_pgsz_v13,
                 n_owned,
             };
-            for (uint32_t i = 0; i < n_owned; ++i) {
-                args.push_back(core_to_tiles_v13[c][i]);
+            if (use_v15) {
+                args_brisc.push_back(v15_bucket_cap);            // 14
+                args_brisc.push_back(v15_ncrisc_done_sem);       // 15
+                args_brisc.push_back(v15_ncrisc_bucket_off);     // 16
+                args_brisc.push_back(v15_brisc_only ? 1u : 0u);  // 17
+                args_brisc.push_back((uint32_t)v15_stats_buf->address());  // 18
+                args_brisc.push_back((uint32_t)v15_spill_buf->address());  // 19
+                args_brisc.push_back(v15_spill_pgsz);            // 20
+                args_brisc.push_back(v15_spill_chunks);          // 21
+                args_brisc.push_back(n_owned_max_v13);           // 22 — spill slot stride
             }
-            SetRuntimeArgs(prog_v13_ac, ak_v13_b, cc, args);
-            SetRuntimeArgs(prog_v13_ac, ak_v13_n, cc, {});
+            for (uint32_t i = 0; i < n_owned; ++i) {
+                args_brisc.push_back(core_to_tiles_v13[c][i]);
+            }
+            SetRuntimeArgs(prog_v13_ac, ak_v13_b, cc, args_brisc);
+
+            if (use_v15) {
+                // V15 NCRISC args:
+                // 0..7: my_core_id, nc_all, M_tiles, N_tiles, route_dram,
+                //       route_pgsz, records_cap, n_owned_tiles
+                // 8: ncrisc_scratch_off
+                // 9..10: owned_lookup_dram, owned_lookup_pgsz
+                // 11: bucket_cap
+                // 12: ncrisc_done_sem_id
+                std::vector<uint32_t> args_ncrisc = {
+                    (uint32_t)c, (uint32_t)nc_all,                              // 0..1
+                    M_tiles_v13, N_tiles_v13,                                   // 2..3
+                    rt_a_v13, route_pgsz_v13, V13_RECORDS_CAP,                  // 4..6
+                    n_owned, ncrisc_scratch_off_v15,                            // 7..8
+                    ol_a_v13, owned_lookup_pgsz_v13,                            // 9..10
+                    v15_bucket_cap,                                             // 11
+                    v15_ncrisc_done_sem,                                        // 12
+                    v15_brisc_only ? 1u : 0u,                                   // 13
+                    (uint32_t)v15_spill_buf->address(),                         // 14: spill_dram
+                    v15_spill_pgsz,                                             // 15
+                    v15_spill_chunks,                                           // 16
+                    n_owned_max_v13,                                            // 17: spill slot stride
+                };
+                SetRuntimeArgs(prog_v13_ac, ak_v13_n, cc, args_ncrisc);
+            } else {
+                SetRuntimeArgs(prog_v13_ac, ak_v13_n, cc, {});
+            }
             SetRuntimeArgs(prog_v13_ac, ak_v13_c, cc, {n_owned});
         }
         wl_v13_accum.add_program(device_range, std::move(prog_v13_ac));
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // V14 Architecture-A: writer-side FPU scatter + simple reduce
+    // ══════════════════════════════════════════════════════════════════════
+    if (use_v14) {
+        v11::build_snake_fill_ownership(M_tiles_v14, N_tiles_v14, (uint32_t)nc_all,
+                                        tile_to_core_v14, core_to_tiles_v14);
+        total_tiles_v14 = M_tiles_v14 * N_tiles_v14;
+        tile_map_bytes_v14 = total_tiles_v14 * sizeof(uint16_t);
+        tile_map_pgsz_v14  = (tile_map_bytes_v14 + 31u) & ~31u;
+
+        density_pgsz_v14 = (uint32_t)N * (uint32_t)sizeof(uint16_t);  // bf16 row
+        uint32_t density_total_v14 = (uint32_t)M * density_pgsz_v14;
+
+        // partial_buf: nc_all × total_tiles pages of 2048 bytes each.
+        uint64_t partial_total_v14 = (uint64_t)nc_all * (uint64_t)total_tiles_v14 * partial_pgsz_v14;
+
+        n_owned_max_v14 = 0u;
+        for (auto& v : core_to_tiles_v14)
+            if ((uint32_t)v.size() > n_owned_max_v14) n_owned_max_v14 = (uint32_t)v.size();
+
+        printf("[server] V14: %u tiles (%ux%u), max_owned=%u, partial_buf=%llu MB, "
+               "density(bf16)=%u KB\n",
+               total_tiles_v14, M_tiles_v14, N_tiles_v14, n_owned_max_v14,
+               (unsigned long long)(partial_total_v14 / (1024u*1024u)),
+               density_total_v14 / 1024u);
+        fflush(stdout);
+
+        // Allocate V14 buffers.
+        tile_map_buf_v14  = make_buf(tile_map_pgsz_v14, tile_map_pgsz_v14);
+        partial_buf_v14   = make_buf((uint32_t)partial_total_v14, partial_pgsz_v14);
+        density_buf_v14   = make_buf(density_total_v14, density_pgsz_v14);
+
+        // DROP-INSTRUMENTATION: 1 uint32 per writer (= nc_all uint32s total).
+        // BRISC writes its bucket-overflow drop count here at end of each iter.
+        v14_drop_buf_pgsz_outer = (uint32_t)nc_all * 4u;
+        v14_drop_buf_pgsz_outer = (v14_drop_buf_pgsz_outer + 31u) & ~31u;
+        v14_drop_buf = make_buf(v14_drop_buf_pgsz_outer, v14_drop_buf_pgsz_outer);
+
+        // Upload tile_to_core.
+        {
+            std::vector<uint8_t> up(tile_map_pgsz_v14, 0);
+            std::memcpy(up.data(), tile_to_core_v14.data(), tile_map_bytes_v14);
+            EnqueueWriteMeshBuffer(cq, tile_map_buf_v14, up, false);
+        }
+        // Zero partial + density (defensive).
+        {
+            std::vector<uint8_t> z((size_t)partial_total_v14, 0);
+            EnqueueWriteMeshBuffer(cq, partial_buf_v14, z, false);
+        }
+        {
+            std::vector<uint8_t> z(density_total_v14, 0);
+            EnqueueWriteMeshBuffer(cq, density_buf_v14, z, false);
+        }
+        Finish(cq);
+
+        // ── PROGRAM 1: V14 scatter (SFPU + FPU) ─────────────────────────────
+        Program prog_v14_sc = CreateProgram();
+
+        // Phase 1 CBs: c_0..c_3 fp32 depth 2 (SFPU inputs)
+        for (uint32_t i = 0; i < 4; ++i) make_cb_all(prog_v14_sc, i, 2);
+        // c_4..c_5 fp32 depth 2 (bxl/byl outputs — double-buffered for SFPU pipelining)
+        make_cb_all(prog_v14_sc, 4, 2);
+        make_cb_all(prog_v14_sc, 5, 2);
+        // c_6..c_21 fp32 depth 2 (ox[0..7], oy[0..7] — double-buffered)
+        for (uint32_t j = 0; j < V14_MAX_OVERLAP; ++j) {
+            make_cb_all(prog_v14_sc, 6 + j, 2);
+            make_cb_all(prog_v14_sc, 14 + j, 2);
+        }
+
+        // Phase 2 CBs: c_22, c_23 bf16 depth V14_CB_OXY_DEPTH (OX_FPU, OY_FPU)
+        auto make_cb_bf16_v14 = [&](Program& p, uint32_t idx, uint32_t n) {
+            CreateCircularBuffer(p, all_crs,
+                CircularBufferConfig(n * TILE_BF16_BYTES_v14,
+                                     {{idx, tt::DataFormat::Float16_b}})
+                    .set_page_size(idx, TILE_BF16_BYTES_v14));
+        };
+        make_cb_bf16_v14(prog_v14_sc, 22, V14_CB_OXY_DEPTH);
+        make_cb_bf16_v14(prog_v14_sc, 23, V14_CB_OXY_DEPTH);
+        // c_25 bf16 depth 2 (CB_PARTIAL)
+        make_cb_bf16_v14(prog_v14_sc, 25, 2);
+
+        // CB_SCRATCH (c_24): tile_to_core + tile_buckets + counts + dense_row_major + active_tile_list
+        // BUCKET_CAP is computed dynamically so total scratch fits within 1100 KB L1 budget,
+        // leaving ~436 KB for the 22 other CBs (212 KB) plus firmware/stack overhead.
+        constexpr uint32_t V14_L1_SCRATCH_BUDGET = 1100u * 1024u;
+        constexpr uint32_t V14_RECORD_BYTES_HOST  = 40u;
+        uint32_t V14_BUCKET_CAP;
+        {
+            // Fixed overhead (not scaled by BUCKET_CAP)
+            uint32_t fixed = 0u;
+            fixed += tile_map_bytes_v14;              fixed = (fixed + 63u) & ~63u;
+            fixed += total_tiles_v14 * 4u;            fixed = (fixed + 63u) & ~63u;  // counts
+            fixed += TILE_BF16_BYTES_v14;             fixed = (fixed + 63u) & ~63u;  // dense_row_major
+            fixed += total_tiles_v14 * 4u;            fixed = (fixed + 63u) & ~63u;  // active_tile_list
+            fixed += 512u;                                                              // safety
+
+            uint32_t bucket_bytes = (V14_L1_SCRATCH_BUDGET > fixed)
+                                    ? (V14_L1_SCRATCH_BUDGET - fixed) : 0u;
+            uint32_t cap = bucket_bytes / (total_tiles_v14 * V14_RECORD_BYTES_HOST);
+            // Test: lift artificial 64-cap ceiling. With ceiling=256 the L1
+            // budget naturally caps it. At 512-grid this allows ~109; at 1024
+            // ~27 (already L1-limited); at 2048 ~6 (already L1-limited).
+            const char* cap_env = std::getenv("V14_BUCKET_CAP_OVERRIDE");
+            uint32_t cap_ceil = cap_env ? (uint32_t)std::atoi(cap_env) : 256u;
+            V14_BUCKET_CAP = std::max(4u, std::min(cap_ceil, cap));
+        }
+
+        uint32_t sc_scratch_v14 = 0u;
+        {
+            uint32_t off = 0u;
+            off += tile_map_bytes_v14;                                          off = (off + 63u) & ~63u;
+            off += total_tiles_v14 * V14_BUCKET_CAP * V14_RECORD_BYTES_HOST;  off = (off + 63u) & ~63u;
+            off += total_tiles_v14 * 4u;                                        off = (off + 63u) & ~63u;
+            off += TILE_BF16_BYTES_v14;                                         off = (off + 63u) & ~63u;
+            off += total_tiles_v14 * 4u;                                        off = (off + 63u) & ~63u;
+            off += 512u;
+            sc_scratch_v14 = (off + 31u) & ~31u;
+        }
+        printf("[server] V14 scatter scratch = %u KB  bucket_cap=%u\n",
+               sc_scratch_v14 / 1024u, V14_BUCKET_CAP);
+        if (sc_scratch_v14 >= 1200u * 1024u) {
+            printf("[server] FATAL: V14 scatter scratch %u KB exceeds safe limit\n",
+                   sc_scratch_v14 / 1024u);
+            fflush(stdout); std::exit(1);
+        }
+        fflush(stdout);
+        CreateCircularBuffer(prog_v14_sc, all_crs,
+            CircularBufferConfig(sc_scratch_v14, {{24u, tt::DataFormat::Float32}})
+                .set_page_size(24u, sc_scratch_v14));
+
+        std::vector<UnpackToDestMode> v14_unpack(NUM_CIRCULAR_BUFFERS,
+                                                  UnpackToDestMode::Default);
+        for (int i = 0; i < 4; ++i) v14_unpack[i] = UnpackToDestMode::UnpackToDestFp32;
+
+        // Pass dynamic BUCKET_CAP as a JIT define so the kernel recompiles per grid size.
+        std::map<std::string, std::string> v14_brisc_defs = {
+            {"V14_BUCKET_CAP", std::to_string(V14_BUCKET_CAP)},
+        };
+        auto sk_v14_b = CreateKernel(prog_v14_sc, KDIR + "v14_scatter_brisc.cpp", all_crs,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_0,
+                               .noc = NOC::RISCV_0_default,
+                               .defines = v14_brisc_defs});
+        auto ck_v14_sc = CreateKernel(prog_v14_sc, KDIR + "v14_scatter_compute.cpp", all_crs,
+            ComputeConfig{.math_fidelity = MathFidelity::HiFi4,
+                          .fp32_dest_acc_en = true,
+                          .unpack_to_dest_mode = v14_unpack,
+                          .math_approx_mode = false,
+                          .defines = v4_defs});
+        auto sk_v14_n = CreateKernel(prog_v14_sc, KDIR + "v14_scatter_ncrisc.cpp", all_crs,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_1,
+                               .noc = NOC::RISCV_1_default});
+
+        uint32_t sc_tables_ready_sem_v14 = CreateSemaphore(prog_v14_sc, all_crs, 0u);
+
+        uint32_t tm_a_v14 = (uint32_t)tile_map_buf_v14->address();
+        uint32_t pa_a_v14 = (uint32_t)partial_buf_v14->address();
+        uint32_t da_drop_v14 = (uint32_t)v14_drop_buf->address();
+
+        for (int c = 0; c < nc_all; ++c) {
+            auto cc = all_ccs[c];
+            uint32_t my_n  = base_tpc + ((uint32_t)c < rem_tpc ? 1u : 0u);
+            uint32_t first = (uint32_t)c * base_tpc + std::min((uint32_t)c, rem_tpc);
+            // BRISC
+            SetRuntimeArgs(prog_v14_sc, sk_v14_b, cc, {
+                px_a, py_a, sx_a, sy_a, tile_pgsz, first, my_n,        // 0..6
+                tile_map_bytes_v14,                                      // 7
+                (uint32_t)c,                                             // 8 (unused)
+                (uint32_t)nc_all,                                        // 9
+                M_tiles_v14, N_tiles_v14,                                // 10,11
+                (uint32_t)M, (uint32_t)N,                                // 12,13
+                total_tiles_v14,                                         // 14
+                pa_a_v14, partial_pgsz_v14,                              // 15,16
+                (uint32_t)c,                                             // 17 my_writer_id
+                sc_tables_ready_sem_v14,                                 // 18
+                da_drop_v14,                                             // 19 drop buf base
+            });
+            // TRISC: n_scatter_tiles (Phase 1 SFPU). Phase 2 uses sentinel-
+            // driven loop — BRISC pushes ALL_DONE when no more tile groups.
+            SetRuntimeArgs(prog_v14_sc, ck_v14_sc, cc, {my_n});
+            // NCRISC
+            SetRuntimeArgs(prog_v14_sc, sk_v14_n, cc, {
+                tm_a_v14, tile_map_pgsz_v14, tile_map_bytes_v14,         // 0..2
+                sc_tables_ready_sem_v14,                                 // 3
+            });
+        }
+        wl_v14_scatter.add_program(device_range, std::move(prog_v14_sc));
+
+        // ── PROGRAM 2: V14 reduce (FPU add_tiles) ──────────────────────────
+        Program prog_v14_rd = CreateProgram();
+
+        // CB_A (c_0): bf16 input tiles A from NCRISC reader, depth=2
+        constexpr uint32_t V14_RD_CB_DEPTH = 2u;
+        CreateCircularBuffer(prog_v14_rd, all_crs,
+            CircularBufferConfig(V14_RD_CB_DEPTH * TILE_BF16_BYTES_v14,
+                                 {{0u, tt::DataFormat::Float16_b}})
+                .set_page_size(0u, TILE_BF16_BYTES_v14));
+        // CB_B (c_1): bf16 input tiles B from NCRISC reader, depth=2
+        CreateCircularBuffer(prog_v14_rd, all_crs,
+            CircularBufferConfig(V14_RD_CB_DEPTH * TILE_BF16_BYTES_v14,
+                                 {{1u, tt::DataFormat::Float16_b}})
+                .set_page_size(1u, TILE_BF16_BYTES_v14));
+
+        // CB_OUT (c_16): bf16 accumulated tile from TRISC, depth=1
+        CreateCircularBuffer(prog_v14_rd, all_crs,
+            CircularBufferConfig(1u * TILE_BF16_BYTES_v14,
+                                 {{16u, tt::DataFormat::Float16_b}})
+                .set_page_size(16u, TILE_BF16_BYTES_v14));
+
+        // CB_SCRATCH (c_2): bf16 scratch for BRISC row-major conversion, depth=1
+        // NOC DMA cannot read from stack/BSS L1, only from CB-allocated L1.
+        CreateCircularBuffer(prog_v14_rd, all_crs,
+            CircularBufferConfig(1u * TILE_BF16_BYTES_v14,
+                                 {{2u, tt::DataFormat::Float16_b}})
+                .set_page_size(2u, TILE_BF16_BYTES_v14));
+
+        printf("[server] V14 reduce FPU: CB_A/B=%u KB each  CB_OUT=%u KB  CB_SCRATCH=%u KB  (max_owned=%u)\n",
+               V14_RD_CB_DEPTH * TILE_BF16_BYTES_v14 / 1024u,
+               TILE_BF16_BYTES_v14 / 1024u,
+               TILE_BF16_BYTES_v14 / 1024u,
+               n_owned_max_v14);
+        fflush(stdout);
+
+        // BRISC: density writer
+        auto rk_v14_b = CreateKernel(prog_v14_rd, KDIR + "v14_reduce_brisc.cpp", all_crs,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_0,
+                               .noc = NOC::RISCV_0_default});
+        // NCRISC: partial tile reader
+        auto rk_v14_n = CreateKernel(prog_v14_rd, KDIR + "v14_reduce_ncrisc.cpp", all_crs,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_1,
+                               .noc = NOC::RISCV_1_default});
+        // TRISC: FPU eltwise add accumulation
+        auto rk_v14_c = CreateKernel(prog_v14_rd, KDIR + "v14_reduce_compute.cpp", all_crs,
+            ComputeConfig{.math_fidelity = MathFidelity::LoFi,
+                          .fp32_dest_acc_en = false,
+                          .math_approx_mode = false});
+
+        uint32_t da_a_v14 = (uint32_t)density_buf_v14->address();
+        for (int c = 0; c < nc_all; ++c) {
+            auto cc = all_ccs[c];
+            uint32_t n_owned = (uint32_t)core_to_tiles_v14[c].size();
+
+            // BRISC args: density_dram, density_pgsz, N_tiles, nbx, nby, n_owned, tile_ids...
+            std::vector<uint32_t> brisc_args = {
+                da_a_v14, density_pgsz_v14,
+                N_tiles_v14,
+                (uint32_t)M, (uint32_t)N,
+                n_owned,
+            };
+            for (uint32_t i = 0; i < n_owned; ++i)
+                brisc_args.push_back(core_to_tiles_v14[c][i]);
+            SetRuntimeArgs(prog_v14_rd, rk_v14_b, cc, brisc_args);
+
+            // NCRISC args: partial_dram, partial_pgsz, nc_all, n_owned, tile_ids...
+            std::vector<uint32_t> ncrisc_args = {
+                pa_a_v14, partial_pgsz_v14,
+                (uint32_t)nc_all,
+                n_owned,
+            };
+            for (uint32_t i = 0; i < n_owned; ++i)
+                ncrisc_args.push_back(core_to_tiles_v14[c][i]);
+            SetRuntimeArgs(prog_v14_rd, rk_v14_n, cc, ncrisc_args);
+
+            // TRISC args: n_owned, nc_all
+            SetRuntimeArgs(prog_v14_rd, rk_v14_c, cc, {n_owned, (uint32_t)nc_all});
+        }
+        wl_v14_reduce.add_program(device_range, std::move(prog_v14_rd));
+    }
+
     // ── JIT compile ───────────────────────────────────────────────
     printf("[server] JIT compiling kernels...\n"); fflush(stdout);
     auto t_jit = hrclock::now();
-    if (!use_v11 && !use_v13) {
+    if (!use_v11 && !use_v13 && !use_v14) {
         EnqueueMeshWorkload(cq, wl_scatter, false); Finish(cq);
         EnqueueMeshWorkload(cq, wl_gather,  false); Finish(cq);
     }
     if (use_v11) {
+        printf("[server]   V11 hist JIT...\n"); fflush(stdout);
         EnqueueMeshWorkload(cq, wl_v11_hist,    false); Finish(cq);
-        EnqueueMeshWorkload(cq, wl_v11_scatter, false); Finish(cq);
-        EnqueueMeshWorkload(cq, wl_v11_accum,   false); Finish(cq);
+        if (use_v19) {
+            // V19 scatter kernel running with garbage warmup DRAM data appears
+            // to deadlock at 2048 grid (very long zero-init + atomic ops issued
+            // against uninitialized cell positions). Skip warmup of wl_v11_scatter
+            // and wl_v11_accum for V19; first real iter will trigger JIT with
+            // valid Python data. V19 doesn't use wl_v11_accum at all in real iters.
+            printf("[server]   V19: skipping V11 scatter / accum warmup (will JIT on first real iter)\n");
+            fflush(stdout);
+        } else {
+            printf("[server]   V11 scatter JIT...\n"); fflush(stdout);
+            EnqueueMeshWorkload(cq, wl_v11_scatter, false); Finish(cq);
+            printf("[server]   V11 accum JIT...\n"); fflush(stdout);
+            EnqueueMeshWorkload(cq, wl_v11_accum,   false); Finish(cq);
+        }
+        if (use_v19) {
+            printf("[server]   V19 writeout JIT...\n"); fflush(stdout);
+            EnqueueMeshWorkload(cq, wl_v19_writeout, false); Finish(cq);
+        }
+        printf("[server]   V11 (and V19) JIT done.\n"); fflush(stdout);
     }
     if (use_v13) {
         EnqueueMeshWorkload(cq, wl_v13_scatter, false); Finish(cq);
         EnqueueMeshWorkload(cq, wl_v13_accum,   false); Finish(cq);
+    }
+    if (use_v14) {
+        printf("[server]   V14 scatter JIT...\n"); fflush(stdout);
+        EnqueueMeshWorkload(cq, wl_v14_scatter, false); Finish(cq);
+        printf("[server]   V14 scatter JIT done. Now V14 reduce JIT...\n"); fflush(stdout);
+        EnqueueMeshWorkload(cq, wl_v14_reduce,  false); Finish(cq);
+        printf("[server]   V14 reduce JIT done.\n"); fflush(stdout);
     }
     printf("[server] JIT done: %.1f ms\n", ms_since(t_jit)); fflush(stdout);
 
@@ -1755,6 +2694,29 @@ int main(int argc, char* argv[]) {
                            (unsigned long long)min_load,
                            (unsigned long long)max_load, avg_load,
                            (double)max_load / avg_load, hist_ms);
+
+                    // Histogram distribution dump: top-20 tile counts + decile cuts.
+                    if (v11_dbg_first) {
+                        std::vector<uint32_t> sorted_counts(v11_global_count);
+                        std::sort(sorted_counts.begin(), sorted_counts.end(), std::greater<uint32_t>());
+                        printf("[server] V11 top-20 per-tile counts: ");
+                        for (uint32_t i = 0; i < 20 && i < sorted_counts.size(); ++i) {
+                            printf("%u ", sorted_counts[i]);
+                        }
+                        printf("\n");
+                        size_t n = sorted_counts.size();
+                        printf("[server] V11 tile-count percentiles: p99=%u p95=%u p90=%u p75=%u p50=%u p25=%u\n",
+                               sorted_counts[n/100], sorted_counts[n/20], sorted_counts[n/10],
+                               sorted_counts[n/4], sorted_counts[n/2], sorted_counts[(3*n)/4]);
+                        uint32_t over_thresholds[] = {10000, 5000, 2000, 1000, 500, 200, 100};
+                        printf("[server] V11 tiles-above-threshold: ");
+                        for (uint32_t T : over_thresholds) {
+                            uint32_t count_over = 0;
+                            for (uint32_t c : v11_global_count) if (c > T) count_over++;
+                            printf(">%u=%u  ", T, count_over);
+                        }
+                        printf("\n");
+                    }
 
                     // Compute shard table from this histogram
                     std::vector<uint8_t> shard_table_v11;
@@ -2011,11 +2973,62 @@ int main(int argc, char* argv[]) {
                 }
 
                 ts = hrclock::now();
-                // Merged kernel does accum + reduce_a + reduce_bc in one program;
-                // shard sync is via NOC semaphores (1 host Finish() vs the old 3).
-                EnqueueMeshWorkload(cq, wl_v11_accum, false); Finish(cq);
+                if (use_v19) {
+                    // Writeout kernel converts uint32 → fp32 in L1 and writes
+                    // directly to density_buf in DRAM (the TTNN DCT input).
+                    // No host PCIe round-trip, no host-side conversion loop.
+                    EnqueueMeshWorkload(cq, wl_v19_writeout, false);
+                    Finish(cq);
+                } else {
+                    // Merged kernel does accum + reduce_a + reduce_bc in one program;
+                    // shard sync is via NOC semaphores (1 host Finish() vs the old 3).
+                    EnqueueMeshWorkload(cq, wl_v11_accum, false); Finish(cq);
+                }
                 gather_ms = ms_since(ts);
                 v11_iter++;
+            } else if (use_v14) {
+                // V14: zero partial_buf before scatter (inactive tiles must be zero
+                // for reduce correctness). Then scatter writes only active tiles.
+                {
+                    static std::vector<uint8_t> v14_zeros;
+                    uint64_t psize = (uint64_t)nc_all * (uint64_t)total_tiles_v14 * partial_pgsz_v14;
+                    if (v14_zeros.size() != (size_t)psize) v14_zeros.assign((size_t)psize, 0);
+                    EnqueueWriteMeshBuffer(cq, partial_buf_v14, v14_zeros, false);
+                    Finish(cq);
+                }
+                // DROP-INSTRUMENTATION: zero drop buf before scatter.
+                {
+                    std::vector<uint8_t> zd(v14_drop_buf_pgsz_outer, 0);
+                    EnqueueWriteMeshBuffer(cq, v14_drop_buf, zd, false);
+                    Finish(cq);
+                }
+                ts = hrclock::now();
+                EnqueueMeshWorkload(cq, wl_v14_scatter, false); Finish(cq);
+                scatter_ms = ms_since(ts);
+                // DROP-INSTRUMENTATION: read drop counts every N iters, print stats.
+                {
+                    static uint32_t v14_drop_iter = 0;
+                    v14_drop_iter++;
+                    if (v14_drop_iter == 1u || v14_drop_iter == 50u ||
+                        v14_drop_iter == 100u || v14_drop_iter == 200u ||
+                        v14_drop_iter == 300u || v14_drop_iter == 400u ||
+                        v14_drop_iter == 500u || v14_drop_iter == 600u) {
+                        std::vector<uint32_t> drops((size_t)nc_all, 0);
+                        EnqueueReadMeshBuffer(cq, drops, v14_drop_buf, true);
+                        uint64_t total = 0; uint32_t mx = 0; int hot = 0;
+                        for (int c = 0; c < nc_all; ++c) {
+                            total += drops[c];
+                            if (drops[c] > mx) { mx = drops[c]; hot = c; }
+                        }
+                        printf("[V14-DROPS iter=%u] total=%llu  max/core=%u (core %d)  avg/core=%llu\n",
+                               v14_drop_iter, (unsigned long long)total, mx, hot,
+                               (unsigned long long)(total / (uint64_t)nc_all));
+                        fflush(stdout);
+                    }
+                }
+                ts = hrclock::now();
+                EnqueueMeshWorkload(cq, wl_v14_reduce, false); Finish(cq);
+                gather_ms = ms_since(ts);
             } else if (use_v13) {
                 ts = hrclock::now();
                 EnqueueMeshWorkload(cq, wl_v13_scatter, false); Finish(cq);
@@ -2023,6 +3036,48 @@ int main(int argc, char* argv[]) {
                 ts = hrclock::now();
                 EnqueueMeshWorkload(cq, wl_v13_accum, false); Finish(cq);
                 gather_ms = ms_since(ts);
+                // V15 stats dump at iter 1 — verifies per-tile bucket counts.
+                if (use_v15) {
+                    static int v15_stats_dumped = 0;
+                    if (!v15_stats_dumped) {
+                        std::vector<uint32_t> stats_host((size_t)nc_all * 64u, 0);
+                        EnqueueReadMeshBuffer(cq, stats_host, v15_stats_buf, true);
+                        printf("[server] V15-STATS (iter 1):\n");
+                        for (int c = 0; c < nc_all; ++c) {
+                            uint32_t base = (uint32_t)c * 64u;
+                            uint32_t n_owned = stats_host[base + 0];
+                            uint32_t cap = stats_host[base + 1];
+                            uint32_t total = stats_host[base + 2];
+                            if (n_owned == 0u || n_owned > 64u) continue;
+                            printf("  core %3d: n_owned=%u cap=%u total=%u  bcounts:",
+                                   c, n_owned, cap, total);
+                            for (uint32_t t = 0; t < n_owned && t < 8u; ++t) {
+                                printf(" t%u=%u", t, stats_host[base + 3 + t]);
+                            }
+                            printf("  tile_pushes:");
+                            for (uint32_t t = 0; t < n_owned && t < 8u; ++t) {
+                                printf(" t%u=%u", t, stats_host[base + 16 + t]);
+                            }
+                            printf("\n");
+                            // First record of each bucket (slot 24+t*4 in stats_host u32 array,
+                            // which corresponds to byte offset 96 + t*16 in DRAM).
+                            for (uint32_t t = 0; t < n_owned && t < 4u; ++t) {
+                                uint32_t base24 = base + 24u + t*4u;
+                                uint32_t w0 = stats_host[base24 + 0];
+                                uint32_t w1 = stats_host[base24 + 1];
+                                uint32_t w2 = stats_host[base24 + 2];
+                                uint32_t w3 = stats_host[base24 + 3];
+                                int16_t bxl = (int16_t)(w0 & 0xFFFF);
+                                int16_t byl = (int16_t)((w0 >> 16) & 0xFFFF);
+                                uint16_t tid = (uint16_t)(w1 & 0xFFFF);
+                                printf("    t%u rec0: bxl=%d byl=%d tile_id=%u ox[0:1]=0x%08x oy[0:1]=0x%08x\n",
+                                       t, bxl, byl, tid, w2, w3);
+                            }
+                        }
+                        fflush(stdout);
+                        v15_stats_dumped = 1;
+                    }
+                }
             } else {
                 ts = hrclock::now();
                 EnqueueMeshWorkload(cq, wl_scatter, false); Finish(cq);
@@ -2068,7 +3123,26 @@ int main(int argc, char* argv[]) {
             if (use_cpu_dct) {
                 // CPU DCT path: D2H is required — the Python client runs DCT
                 ts = hrclock::now();
-                if (use_v13) {
+                if (use_v14) {
+                    // V14 writes bf16 UNNORMALIZED density (same format as V13).
+                    static std::vector<uint8_t> v14_bf16_bytes;
+                    if (v14_bf16_bytes.size() != (size_t)M * N * 2u) {
+                        v14_bf16_bytes.assign((size_t)M * N * 2u, 0);
+                    }
+                    EnqueueReadMeshBuffer(cq, v14_bf16_bytes, density_buf_v14, true);
+                    density_d2h_ms = ms_since(ts);
+                    const size_t MN = (size_t)M * N;
+                    const uint16_t* src =
+                        reinterpret_cast<const uint16_t*>(v14_bf16_bytes.data());
+                    float* df = density_flat.data();
+                    const float scale = 1.0f / ((float)bsx * (float)bsy);
+                    for (size_t i = 0; i < MN; ++i) {
+                        uint32_t bits = ((uint32_t)src[i]) << 16;
+                        float f;
+                        std::memcpy(&f, &bits, sizeof(f));
+                        df[i] = f * scale;
+                    }
+                } else if (use_v13) {
                     // V13 writes bf16 UNNORMALIZED density. Read bf16 bytes,
                     // expand to fp32 in density_flat, then divide by bin_area
                     // (1/(bsx*bsy)) to match V11's normalized contract.
@@ -2094,6 +3168,29 @@ int main(int argc, char* argv[]) {
                     density_d2h_ms = ms_since(ts);
                 }
 
+                // V19 debug: dump density on a chosen iter for V11-vs-V19 diff.
+                {
+                    static const uint32_t DUMP_ITER =
+                        env_uint("DENSITY_DUMP_ITER", 0u);
+                    static const char* DUMP_PATH = getenv("DENSITY_DUMP_PATH");
+                    static uint32_t dump_count = 0;
+                    if (DUMP_ITER != 0u && DUMP_PATH != nullptr) {
+                        dump_count++;
+                        if (dump_count == DUMP_ITER) {
+                            FILE* fp = fopen(DUMP_PATH, "wb");
+                            if (fp) {
+                                fwrite(density_flat.data(), sizeof(float),
+                                       density_flat.size(), fp);
+                                fclose(fp);
+                                printf("[server] density dumped iter=%u to %s "
+                                       "(%zu floats)\n", DUMP_ITER, DUMP_PATH,
+                                       density_flat.size());
+                                fflush(stdout);
+                            }
+                        }
+                    }
+                }
+
                 // NOTE: CPU_DCT=1 path does NOT fold initial_density_map on
                 // the server — the Python client adds (initial_density_map /
                 // bin_area) itself in scatter_ttnn_client.py before its CPU
@@ -2101,6 +3198,11 @@ int main(int argc, char* argv[]) {
                 // convergence (V13 hits HPWL=169M, V11 has small bias).
                 (void)id_cache;
             } else {
+                if (use_v14) {
+                    printf("[server] FATAL: GATHER_MODE=v14 requires CPU_DCT=1 "
+                           "(bf16 density not wired into TT-DCT zero-copy path).\n");
+                    fflush(stdout); std::exit(1);
+                }
                 if (use_v13) {
                     // V13's bf16 density_buf isn't compatible with the fp32
                     // zero-copy TTNN DCT path today. Use CPU_DCT=1 with V13.

@@ -51,7 +51,14 @@ cmake .. \
     -DCMAKE_CXX_COMPILER="$CXX" \
     -DTT_METAL_HOME="$TT_METAL_HOME"
 
-make -j "$JOBS" density_scatter_ttnn_server
+make -j "$JOBS" density_scatter_ttnn_server v13_mcast_smoke_host \
+    v13_matmul_smoke_host v13_pack_bench_host v13_accum_smoke_host \
+    v13_scatter_smoke_host atomic_bench_host v19_microbench_host
 
 echo
 echo "[build_server] OK → $BUILD_DIR/density_scatter_ttnn_server"
+echo "[build_server] OK → $BUILD_DIR/v13_mcast_smoke_host"
+echo "[build_server] OK → $BUILD_DIR/v13_matmul_smoke_host"
+echo "[build_server] OK → $BUILD_DIR/v13_pack_bench_host"
+echo "[build_server] OK → $BUILD_DIR/v13_accum_smoke_host"
+echo "[build_server] OK → $BUILD_DIR/v19_microbench_host"

@@ -117,6 +117,12 @@ def _density_audit(px, py, sx, sy, tt_density, M, N, xl, yl, xh, yh):
     n = len(px)
     n_real = int(((sx > 0) & (sy > 0)).sum())
 
+    # Stop CPU-density comparison after _audit_max_iters to keep total run time
+    # manageable (CPU density is O(seconds) per iter on adaptec scale).
+    if _audit_iter >= _audit_max_iters:
+        _audit_iter += 1
+        return
+
     cpu = _cpu_density_fp32(px.astype(np.float32), py.astype(np.float32),
                             sx.astype(np.float32), sy.astype(np.float32),
                             M, N, np.float32(xl), np.float32(yl), bsx, bsy)
@@ -363,6 +369,19 @@ class ScatterTTNNClient:
                 "-e", f"TT_METAL_LOGGER_LEVEL={os.environ.get('TT_METAL_LOGGER_LEVEL', 'WARNING')}",
                 "-e", f"TT_METAL_DEVICE_PROFILER={os.environ.get('TT_METAL_DEVICE_PROFILER', '0')}",
                 "-e", f"CPU_DCT={os.environ.get('CPU_DCT', '')}",
+                "-e", f"V15_CAP_OVERRIDE={os.environ.get('V15_CAP_OVERRIDE', '')}",
+                "-e", f"V15_FORCE_NO_SPILL={os.environ.get('V15_FORCE_NO_SPILL', '')}",
+                "-e", f"V14_BUCKET_CAP_OVERRIDE={os.environ.get('V14_BUCKET_CAP_OVERRIDE', '')}",
+                "-e", f"V11_HOT_THRESHOLD={os.environ.get('V11_HOT_THRESHOLD', '')}",
+                "-e", f"V11_MAX_K={os.environ.get('V11_MAX_K', '')}",
+                "-e", f"V11_CB_SLOT_HEADROOM={os.environ.get('V11_CB_SLOT_HEADROOM', '')}",
+                "-e", f"V18_HASH_BITS={os.environ.get('V18_HASH_BITS', '')}",
+                "-e", f"V18_BF16_AREA={os.environ.get('V18_BF16_AREA', '')}",
+                "-e", f"V18_NO_DIRTY={os.environ.get('V18_NO_DIRTY', '')}",
+                "-e", f"V19_SCALE_BITS={os.environ.get('V19_SCALE_BITS', '')}",
+                "-e", f"V19_BREAKDOWN_DUMP={os.environ.get('V19_BREAKDOWN_DUMP', '')}",
+                "-e", f"DENSITY_DUMP_ITER={os.environ.get('DENSITY_DUMP_ITER', '')}",
+                "-e", f"DENSITY_DUMP_PATH={os.environ.get('DENSITY_DUMP_PATH', '')}",
                 "-e", f"LD_LIBRARY_PATH={tt_lib}",
                 self.container,
                 _SERVER_BINARY,
@@ -806,6 +825,14 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
             t_cd = _t_cpu_dct.perf_counter()
             density_map = field_x.to(pos.dtype)  # TT scatter density (movable+filler), normalized by inv_ba
 
+            # Audit pure cell-density (pre-initial-addback) so we compare
+            # like-for-like against CPU's _cpu_density_fp32 reference.
+            if os.environ.get("DENSITY_AUDIT") == "1":
+                tt_dens_np = density_map.detach().cpu().numpy()
+                _density_audit(px, py, sx, sy, tt_dens_np,
+                                int(num_bins_x), int(num_bins_y),
+                                float(xl), float(yl), float(xh), float(yh))
+
             # CRITICAL FIX: V13_fpu server does NOT apply initial_density_map.
             # It only scatters movable+filler. The fixed-cell terminal density
             # is in DREAMPlace's `initial_density_map` (unnormalized) and must
@@ -814,12 +841,6 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
             # solve → terminal regions don't repel cells → divergence at 512.
             bin_area = float(bin_size_x) * float(bin_size_y)
             density_map = density_map + (initial_density_map / bin_area).to(pos.dtype)
-
-            if os.environ.get("DENSITY_AUDIT") == "1":
-                tt_dens_np = density_map.detach().cpu().numpy()
-                _density_audit(px, py, sx, sy, tt_dens_np,
-                                int(num_bins_x), int(num_bins_y),
-                                float(xl), float(yl), float(xh), float(yh))
 
             auv = dct2.forward(density_map)
             auv_wu = auv.mul(wu_by_wu2_plus_wv2_half)
