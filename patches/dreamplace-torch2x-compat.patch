@@ -1,0 +1,45 @@
+diff --git a/dreamplace/ops/utility/src/torch.h b/dreamplace/ops/utility/src/torch.h
+index b7cf34f..15499f9 100644
+--- a/dreamplace/ops/utility/src/torch.h
++++ b/dreamplace/ops/utility/src/torch.h
+@@ -59,6 +59,40 @@
+ 
+ #include <limits>
+ 
++// ── torch 2.x / GCC 11+ compat ───────────────────────────────────────────────
++// Problem: torch 2.x headers pull at::ceil(Tensor), at::sqrt(Tensor), etc.
++// into scope.  Because at::Tensor has implicit constructors from scalars,
++// unqualified calls like  ceil(float_expr)  become ambiguous between the
++// std:: math overloads and the at:: Tensor overloads.
++//
++// Fix: provide explicit inline shims in global namespace that are an *exact*
++// match for float/double arguments, shadowing the at:: overloads.
++// These are placed AFTER <torch/extension.h> so the shims can call std::
++// functions freely without include-order conflicts.
++#include <cmath>
++
++#if TORCH_VERSION_MAJOR >= 2
++inline float  ceil  (float  x) { return std::ceil  (x); }
++inline double ceil  (double x) { return std::ceil  (x); }
++inline float  floor (float  x) { return std::floor (x); }
++inline double floor (double x) { return std::floor (x); }
++inline float  sqrt  (float  x) { return std::sqrt  (x); }
++inline double sqrt  (double x) { return std::sqrt  (x); }
++inline float  abs   (float  x) { return std::abs   (x); }
++inline double abs   (double x) { return std::abs   (x); }
++inline float  round (float  x) { return std::round (x); }
++inline double round (double x) { return std::round (x); }
++inline float  exp   (float  x) { return std::exp   (x); }
++inline double exp   (double x) { return std::exp   (x); }
++inline float  log   (float  x) { return std::log   (x); }
++inline double log   (double x) { return std::log   (x); }
++inline float  pow   (float  b, float  e) { return std::pow(b, e); }
++inline double pow   (double b, double e) { return std::pow(b, e); }
++inline float  fabs  (float  x) { return std::fabs  (x); }
++inline double fabs  (double x) { return std::fabs  (x); }
++#endif
++// ─────────────────────────────────────────────────────────────────────────────
++
+ #define CHECK_CPU(x) AT_ASSERTM(!x.is_cuda(), #x " must be a tensor on CPU")
+ #define CHECK_CUDA(x) AT_ASSERTM(x.is_cuda(), #x " must be a tensor on CUDA")
+ #define CHECK_FLAT(x) AT_ASSERTM(x.ndimension() == 1, #x "must be a flat tensor")

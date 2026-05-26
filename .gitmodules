@@ -1,0 +1,6 @@
+[submodule "tt-metal"]
+	path = tt-metal
+	url = https://github.com/tenstorrent/tt-metal.git
+[submodule "DREAMPlace"]
+	path = DREAMPlace
+	url = https://github.com/limbo018/DREAMPlace.git
