@@ -181,20 +181,26 @@ static void face_overlap_y(uint32_t d_py, uint32_t d_sy, uint32_t, uint32_t d_ou
 // face_fn is only expanded inside MATH() which compiles to nothing on non-MATH
 // TRISCs, so the face function name never reaches the compiler on TRISC_UNPACK
 // or TRISC_PACK.
-#define SFPU_PASS(cb_a, cb_b, cb_out, face_fn)       \
-    tile_regs_acquire();                              \
-    copy_tile_init(cb_a);  copy_tile(cb_a, 0, 0);    \
-    copy_tile_init(cb_b);  copy_tile(cb_b, 0, 1);    \
-    MATH(_llk_math_eltwise_ternary_sfpu_params_(      \
-        face_fn, 0, 1, 0, 0,                         \
-        static_cast<int>(VectorMode::RC)));           \
-    tile_regs_commit();                               \
-    cb_reserve_back(cb_out, 1);                       \
-    tile_regs_wait();                                 \
-    pack_reconfig_data_format(cb_out);                \
-    pack_tile(0, cb_out);                             \
-    tile_regs_release();                              \
-    cb_push_back(cb_out, 1)
+// Wrapped in a brace-scoped DeviceZoneScopedN so each of the 18 passes per
+// tile shows up as its own Tracy zone; the outer V4C-SFPU-TILE zone still
+// nests them for tile-level totals.
+#define SFPU_PASS(cb_a, cb_b, cb_out, face_fn, zone_label)  \
+    {                                                       \
+        DeviceZoneScopedN(zone_label);                      \
+        tile_regs_acquire();                                \
+        copy_tile_init(cb_a);  copy_tile(cb_a, 0, 0);       \
+        copy_tile_init(cb_b);  copy_tile(cb_b, 0, 1);       \
+        MATH(_llk_math_eltwise_ternary_sfpu_params_(        \
+            face_fn, 0, 1, 0, 0,                            \
+            static_cast<int>(VectorMode::RC)));             \
+        tile_regs_commit();                                 \
+        cb_reserve_back(cb_out, 1);                         \
+        tile_regs_wait();                                   \
+        pack_reconfig_data_format(cb_out);                  \
+        pack_tile(0, cb_out);                               \
+        tile_regs_release();                                \
+        cb_push_back(cb_out, 1);                            \
+    }
 
 void kernel_main() {
     const uint32_t n_tiles = get_arg_val<uint32_t>(0);
@@ -218,59 +224,59 @@ void kernel_main() {
         // Pass 1-2: bxl, byl
         {
         DeviceZoneScopedN("V4C-SFPU-TILE");
-        SFPU_PASS(cb_px, cb_sx, 4u,  face_bxl);
-        SFPU_PASS(cb_py, cb_sy, 5u,  face_byl);
+        SFPU_PASS(cb_px, cb_sx, 4u,  face_bxl, "V4C-BXL");
+        SFPU_PASS(cb_py, cb_sy, 5u,  face_byl, "V4C-BYL");
 
         // Passes 3-10: overlap_x[0..7]
 #if V4_MAX_OVERLAP >= 1
-        SFPU_PASS(cb_px, cb_sx, 6u,  face_overlap_x<0>);
+        SFPU_PASS(cb_px, cb_sx, 6u,  face_overlap_x<0>, "V4C-OX0");
 #endif
 #if V4_MAX_OVERLAP >= 2
-        SFPU_PASS(cb_px, cb_sx, 7u,  face_overlap_x<1>);
+        SFPU_PASS(cb_px, cb_sx, 7u,  face_overlap_x<1>, "V4C-OX1");
 #endif
 #if V4_MAX_OVERLAP >= 3
-        SFPU_PASS(cb_px, cb_sx, 8u,  face_overlap_x<2>);
+        SFPU_PASS(cb_px, cb_sx, 8u,  face_overlap_x<2>, "V4C-OX2");
 #endif
 #if V4_MAX_OVERLAP >= 4
-        SFPU_PASS(cb_px, cb_sx, 9u,  face_overlap_x<3>);
+        SFPU_PASS(cb_px, cb_sx, 9u,  face_overlap_x<3>, "V4C-OX3");
 #endif
 #if V4_MAX_OVERLAP >= 5
-        SFPU_PASS(cb_px, cb_sx, 10u, face_overlap_x<4>);
+        SFPU_PASS(cb_px, cb_sx, 10u, face_overlap_x<4>, "V4C-OX4");
 #endif
 #if V4_MAX_OVERLAP >= 6
-        SFPU_PASS(cb_px, cb_sx, 11u, face_overlap_x<5>);
+        SFPU_PASS(cb_px, cb_sx, 11u, face_overlap_x<5>, "V4C-OX5");
 #endif
 #if V4_MAX_OVERLAP >= 7
-        SFPU_PASS(cb_px, cb_sx, 12u, face_overlap_x<6>);
+        SFPU_PASS(cb_px, cb_sx, 12u, face_overlap_x<6>, "V4C-OX6");
 #endif
 #if V4_MAX_OVERLAP >= 8
-        SFPU_PASS(cb_px, cb_sx, 13u, face_overlap_x<7>);
+        SFPU_PASS(cb_px, cb_sx, 13u, face_overlap_x<7>, "V4C-OX7");
 #endif
 
         // Passes 11-18: overlap_y[0..7]
 #if V4_MAX_OVERLAP >= 1
-        SFPU_PASS(cb_py, cb_sy, 14u, face_overlap_y<0>);
+        SFPU_PASS(cb_py, cb_sy, 14u, face_overlap_y<0>, "V4C-OY0");
 #endif
 #if V4_MAX_OVERLAP >= 2
-        SFPU_PASS(cb_py, cb_sy, 15u, face_overlap_y<1>);
+        SFPU_PASS(cb_py, cb_sy, 15u, face_overlap_y<1>, "V4C-OY1");
 #endif
 #if V4_MAX_OVERLAP >= 3
-        SFPU_PASS(cb_py, cb_sy, 16u, face_overlap_y<2>);
+        SFPU_PASS(cb_py, cb_sy, 16u, face_overlap_y<2>, "V4C-OY2");
 #endif
 #if V4_MAX_OVERLAP >= 4
-        SFPU_PASS(cb_py, cb_sy, 17u, face_overlap_y<3>);
+        SFPU_PASS(cb_py, cb_sy, 17u, face_overlap_y<3>, "V4C-OY3");
 #endif
 #if V4_MAX_OVERLAP >= 5
-        SFPU_PASS(cb_py, cb_sy, 18u, face_overlap_y<4>);
+        SFPU_PASS(cb_py, cb_sy, 18u, face_overlap_y<4>, "V4C-OY4");
 #endif
 #if V4_MAX_OVERLAP >= 6
-        SFPU_PASS(cb_py, cb_sy, 19u, face_overlap_y<5>);
+        SFPU_PASS(cb_py, cb_sy, 19u, face_overlap_y<5>, "V4C-OY5");
 #endif
 #if V4_MAX_OVERLAP >= 7
-        SFPU_PASS(cb_py, cb_sy, 20u, face_overlap_y<6>);
+        SFPU_PASS(cb_py, cb_sy, 20u, face_overlap_y<6>, "V4C-OY6");
 #endif
 #if V4_MAX_OVERLAP >= 8
-        SFPU_PASS(cb_py, cb_sy, 21u, face_overlap_y<7>);
+        SFPU_PASS(cb_py, cb_sy, 21u, face_overlap_y<7>, "V4C-OY7");
 #endif
 
         } // end V4C-SFPU-TILE

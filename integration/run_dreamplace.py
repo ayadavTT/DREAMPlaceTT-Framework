@@ -35,9 +35,36 @@ import time
 
 _THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 _ROOT = os.path.dirname(_THIS_DIR)  # TTPort repository root
-_DREAMPLACE_DIR = os.path.join(_ROOT, "DREAMPlace", "install")
+
+def _resolve_dreamplace_dir() -> str:
+    """Return the DREAMPlace install dir.
+
+    Priority (highest first):
+      1. ``--dreamplace-dir`` CLI argument (passed as DREAMPLACE_DIR env var
+         by the pre-exec shim so the re-exec picks it up too)
+      2. ``DREAMPLACE_DIR`` environment variable
+      3. Default: ``<repo-root>/DREAMPlace/install``
+    """
+    from_env = os.environ.get("DREAMPLACE_DIR", "")
+    if from_env:
+        return os.path.realpath(from_env)
+    # Peek at sys.argv for --dreamplace-dir before argparse runs
+    argv = sys.argv[1:]
+    for i, a in enumerate(argv):
+        if a == "--dreamplace-dir" and i + 1 < len(argv):
+            d = argv[i + 1]
+            os.environ["DREAMPLACE_DIR"] = d  # propagate into re-exec env
+            return os.path.realpath(d)
+        if a.startswith("--dreamplace-dir="):
+            d = a.split("=", 1)[1]
+            os.environ["DREAMPLACE_DIR"] = d
+            return os.path.realpath(d)
+    return os.path.join(_ROOT, "DREAMPlace", "install")
+
+_DREAMPLACE_DIR = _resolve_dreamplace_dir()
 _INTEGRATION_DIR = _THIS_DIR
-_VENV_ROOT = os.path.join(_ROOT, "DREAMPlace", "dp_env")
+# dp_env lives alongside the install dir (sibling of install/)
+_VENV_ROOT = os.path.join(os.path.dirname(_DREAMPLACE_DIR), "dp_env")
 _DP_ENV_PYTHON = os.path.join(_VENV_ROOT, "bin", "python3")
 
 
@@ -64,12 +91,14 @@ def parse_args():
     ap = argparse.ArgumentParser(
         description="Run DREAMPlace with CPU or TT device for electric potential.")
     ap.add_argument("--device",
-                    choices=["cpu", "tt", "ttnn_dct", "scatter_ttnn", "scatter_ttnn_direct"],
+                    choices=["cpu", "tt", "ttnn_dct", "scatter_ttnn",
+                             "scatter_ttnn_direct", "scatter_ttnn_inprocess"],
                     default="cpu",
                     help="cpu = pure CPU (baseline); tt = CPU+TT (V4-V9b kernels); "
                          "ttnn_dct = CPU scatter + TTNN DCT field solve; "
                          "scatter_ttnn = TT-Metal V4 scatter + TTNN C++ DCT via IPC; "
-                         "scatter_ttnn_direct = same pipeline, direct binary launch + /dev/shm IPC (no docker exec)")
+                         "scatter_ttnn_direct = same pipeline, direct binary launch + /dev/shm IPC (no docker exec); "
+                         "scatter_ttnn_inprocess = V19 Rung 3 pybind11 extension, no IPC at all")
     ap.add_argument("--benchmark", required=True,
                     help="Path to DREAMPlace JSON parameter file")
     ap.add_argument("--container", default=None,
@@ -82,11 +111,22 @@ def parse_args():
                          "default: <repo-root>/ipc)")
     ap.add_argument("--nc-max", type=int, default=0,
                     help="Maximum cell count for TT device allocation (0 = auto)")
+    ap.add_argument("--dreamplace-dir", default=None,
+                    help="Path to a DREAMPlace install/ directory "
+                         "(default: DREAMPlace/install; overridden by DREAMPLACE_DIR env var). "
+                         "Use this to point at DREAMPlace-lowprec/install for fp16/bf16 runs.")
     ap.add_argument("--results-dir", default=None,
                     help="Directory for output JSON/CSV (default: <repo-root>/results)")
     ap.add_argument("--profile", action="store_true", default=False,
                     help="Enable TT-Metal device profiler (TT mode only); "
                          "writes per-kernel per-core CSV to <results-dir>/tt_profile/")
+    ap.add_argument("--num-threads", type=int, default=None,
+                    help="Override the num_threads value in the benchmark JSON. "
+                         "DREAMPlace reads num_threads from the JSON and calls "
+                         "torch.set_num_threads() + os.environ[OMP_NUM_THREADS] with it, "
+                         "silently ignoring any OMP_NUM_THREADS set in the shell. "
+                         "This flag overrides params.num_threads after JSON load, "
+                         "before Placer.place() runs.")
     return ap.parse_args()
 
 
@@ -259,6 +299,15 @@ def _install_timing_hooks(device: str = "cpu") -> None:
                         entry.update(_stc._client._timings[-1])
                 except Exception:
                     pass
+            elif device == "scatter_ttnn" or device == "scatter_ttnn_inprocess":
+                # The in-process client hijacks scatter_ttnn_client._client so both
+                # paths share the timing list.
+                try:
+                    import scatter_ttnn_client as _stc
+                    if _stc._client and _stc._client._timings:
+                        entry.update(_stc._client._timings[-1])
+                except Exception:
+                    pass
             _iter_timings.append(entry)
 
             if len(_iter_timings) % 10 == 0:
@@ -373,16 +422,25 @@ def _install_timing_hooks(device: str = "cpu") -> None:
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    global _DREAMPLACE_DIR
     args = parse_args()
+
+    # --dreamplace-dir can also be applied after parse_args (redundant if pre-exec
+    # already ran, but keeps things consistent for single-process invocations)
+    if args.dreamplace_dir:
+        _DREAMPLACE_DIR = os.path.realpath(args.dreamplace_dir)
+
     _setup_dreamplace_path()
 
     benchmark_name = os.path.splitext(os.path.basename(args.benchmark))[0]
-    results_dir = args.results_dir or os.path.join(_ROOT, "results")
+    results_dir = os.path.realpath(
+        args.results_dir or os.path.join(_ROOT, "results"))
     os.makedirs(results_dir, exist_ok=True)
 
     # ISPD JSONs use aux_input relative to DREAMPlace/install (see DREAMPlaceTT).
     benchmark_json = os.path.realpath(os.path.abspath(args.benchmark))
     _dp_install = os.path.realpath(_DREAMPLACE_DIR)
+    print(f"[run_dreamplace] DREAMPlace install: {_dp_install}", flush=True)
     os.chdir(_dp_install)
 
     print(f"\n{'='*60}", flush=True)
@@ -432,6 +490,22 @@ def main() -> None:
             num_cells=args.nc_max,
         )
 
+    # ── scatter_ttnn_inprocess device setup (V19 Rung 3: pybind11, no IPC) ──────
+    # In-process pybind11 extension that replaces the docker-exec + shm path.
+    # The chip work is the same as `--device scatter_ttnn`; only the host-side
+    # transport changes. IPC-bucket timing keys (pos_write_ms/kernel_wait_ms/
+    # field_read_ms) measure 0.0 in this path — see docs/V19_RUNG3_INPROCESS_HANDOFF.md.
+    if args.device == "scatter_ttnn_inprocess":
+        # container/ipc_dir args are accepted but ignored — no IPC layer.
+        import scatter_ttnn_client_inprocess
+        scatter_ttnn_client_inprocess.patch_dreamplace(
+            container=args.container or "",
+            ipc_dir=args.ipc_dir or "",
+            num_cells=args.nc_max,
+        )
+        print(f"[run_dreamplace] scatter_ttnn_inprocess: in-process pybind11 engine",
+              flush=True)
+
     # ── scatter_ttnn_direct device setup (direct binary launch + /dev/shm IPC) ───
     if args.device == "scatter_ttnn_direct":
         ipc_dir = args.ipc_dir or "/dev/shm/tt_scatter_ipc"
@@ -467,6 +541,29 @@ def main() -> None:
     params.load(benchmark_json)
     params.gpu = 0  # force CPU-only (no CUDA) regardless of JSON setting
 
+    # ── Thread-count override ──────────────────────────────────────────────────
+    # IMPORTANT: params.load() reads "num_threads" from the JSON (hardcoded to 16
+    # in all sweep configs). BasicPlace.__init__ calls torch.set_num_threads(params.num_threads)
+    # and Placer.place() sets os.environ["OMP_NUM_THREADS"] = str(params.num_threads).
+    # This silently overrides any OMP_NUM_THREADS set in the shell before launch.
+    # --num-threads overrides params.num_threads here, after JSON load, so the
+    # correct count propagates into both torch and OMP inside DREAMPlace.
+    import torch as _torch
+    json_num_threads = params.num_threads
+    if args.num_threads is not None:
+        params.num_threads = args.num_threads
+        # Pre-set env and torch so any code that reads them before place() sees it.
+        # Placer.place() will call os.environ["OMP_NUM_THREADS"] = str(params.num_threads)
+        # and BasicPlace.__init__ calls torch.set_num_threads(params.num_threads),
+        # so setting params.num_threads is the authoritative fix.
+        os.environ["OMP_NUM_THREADS"] = str(params.num_threads)
+        _torch.set_num_threads(params.num_threads)
+    print(f"[run_dreamplace] num_threads: JSON={json_num_threads}  "
+          f"effective={params.num_threads}  "
+          f"torch.get_num_threads()={_torch.get_num_threads()}  "
+          f"OMP_NUM_THREADS(env)={os.environ.get('OMP_NUM_THREADS','not-set')}",
+          flush=True)
+
     t_start = time.perf_counter()
     try:
         Placer.place(params, 0.01)
@@ -481,10 +578,44 @@ def main() -> None:
     _metrics["n_ep_calls"]   = len(_iter_timings)
 
     if _iter_timings:
-        ep_times = [t["ep_ms"] for t in _iter_timings]
-        _metrics["ep_mean_ms"]   = float(sum(ep_times) / len(ep_times))
-        _metrics["ep_median_ms"] = float(sorted(ep_times)[len(ep_times)//2])
-        _metrics["ep_total_ms"]  = float(sum(ep_times))
+        # Steady-state: drop first 10 iters (warmup/JIT/cache effects)
+        N_WARMUP = 10
+        ss_iters = _iter_timings[N_WARMUP:] if len(_iter_timings) > N_WARMUP else _iter_timings
+
+        def _stats(values):
+            if not values: return {}
+            sv = sorted(values)
+            return {
+                "mean": float(sum(values) / len(values)),
+                "median": float(sv[len(sv)//2]),
+                "p99": float(sv[min(len(sv)-1, int(len(sv)*0.99))]),
+            }
+
+        ep_times = [t["ep_ms"] for t in ss_iters]
+        s = _stats(ep_times)
+        _metrics["ep_mean_ms"]   = s.get("mean", 0.0)
+        _metrics["ep_median_ms"] = s.get("median", 0.0)
+        _metrics["ep_total_ms"]  = float(sum(t["ep_ms"] for t in _iter_timings))
+
+        # CPU sub-op breakdown (when CPU device and hooks attached)
+        if args.device == "cpu":
+            sc = [t.get("scatter_ms", 0.0) for t in ss_iters if "scatter_ms" in t]
+            dc = [t.get("dct_ms",     0.0) for t in ss_iters if "dct_ms"     in t]
+            ot = [t.get("other_ms",   0.0) for t in ss_iters if "other_ms"   in t]
+            if sc:
+                ss = _stats(sc)
+                _metrics["cpu_density_mean_ms"]   = ss["mean"]
+                _metrics["cpu_density_median_ms"] = ss["median"]
+            if dc:
+                ss = _stats(dc)
+                _metrics["cpu_dct_mean_ms"]   = ss["mean"]
+                _metrics["cpu_dct_median_ms"] = ss["median"]
+            if ot:
+                ss = _stats(ot)
+                _metrics["cpu_other_mean_ms"]   = ss["mean"]
+                _metrics["cpu_other_median_ms"] = ss["median"]
+        _metrics["n_steady_iters"] = len(ss_iters)
+        _metrics["n_warmup_dropped"] = min(N_WARMUP, len(_iter_timings))
 
     if args.device == "scatter_ttnn_direct":
         import scatter_ttnn_client as _stc

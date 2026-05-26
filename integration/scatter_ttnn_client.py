@@ -623,9 +623,70 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
                 dct2, idct2, idct_idxst, idxst_idct, fast_mode)
 
         t_total = _time.perf_counter()
+        _prof = {}                              # ── profiling instrumentation ──
+        _ts = _time.perf_counter()
 
         num_nodes = pos.shape[0] // 2
         nc = int(num_movable_nodes) + int(num_filler_nodes)
+
+        # ── FAST PATH: C++ engine does cell-extract + subcell + sort in one
+        # call. Active only on iter 2+ for the in-process client, once
+        # configure_cells() has populated the engine's fused layout. ──
+        if getattr(_client, "_cpp_fast_path_configured", False) and hasattr(_client, "call_from_pos"):
+            import numpy as _np
+            pos_np = pos.detach().cpu().numpy()
+            _prof["prep_cells_ms"] = (_time.perf_counter() - _ts) * 1000; _ts = _time.perf_counter()
+            _prof["subcell_ms"]    = 0.0
+            _prof["pre_call_ms"]   = 0.0
+            field_x, field_y, timing = _client.call_from_pos(pos_np)
+            _prof["call_ms"] = (_time.perf_counter() - _ts) * 1000; _ts = _time.perf_counter()
+
+            # CPU DCT diagnostic mode (same as slow path).
+            if os.environ.get("CPU_DCT") == "1":
+                import time as _t_cpu_dct
+                t_cd = _t_cpu_dct.perf_counter()
+                density_map = field_x.to(pos.dtype)
+                bin_area = float(bin_size_x) * float(bin_size_y)
+                density_map = density_map + (initial_density_map / bin_area).to(pos.dtype)
+                auv = dct2.forward(density_map)
+                auv_wu = auv.mul(wu_by_wu2_plus_wv2_half)
+                auv_wv = auv.mul(wv_by_wu2_plus_wv2_half)
+                field_x = idxst_idct.forward(auv_wu)
+                field_y = idct_idxst.forward(auv_wv)
+                timing["cpu_dct_ms"] = (_t_cpu_dct.perf_counter() - t_cd) * 1000
+            _prof["dct_ms"] = (_time.perf_counter() - _ts) * 1000; _ts = _time.perf_counter()
+
+            ctx.field_map_x = field_x.to(pos.dtype)
+            ctx.field_map_y = field_y.to(pos.dtype)
+            ctx.pos                = pos
+            ctx.node_size_x_clamped = node_size_x_clamped
+            ctx.node_size_y_clamped = node_size_y_clamped
+            ctx.offset_x           = offset_x
+            ctx.offset_y           = offset_y
+            ctx.ratio              = ratio
+            ctx.bin_center_x       = bin_center_x
+            ctx.bin_center_y       = bin_center_y
+            ctx.target_density     = target_density
+            ctx.xl = xl;  ctx.yl = yl;  ctx.xh = xh;  ctx.yh = yh
+            ctx.bin_size_x         = bin_size_x
+            ctx.bin_size_y         = bin_size_y
+            ctx.num_movable_nodes  = num_movable_nodes
+            ctx.num_filler_nodes   = num_filler_nodes
+            ctx.padding            = padding
+            ctx.num_bins_x         = num_bins_x
+            ctx.num_bins_y         = num_bins_y
+            ctx.num_movable_impacted_bins_x = num_movable_impacted_bins_x
+            ctx.num_movable_impacted_bins_y = num_movable_impacted_bins_y
+            ctx.num_filler_impacted_bins_x  = num_filler_impacted_bins_x
+            ctx.num_filler_impacted_bins_y  = num_filler_impacted_bins_y
+            ctx.deterministic_flag = deterministic_flag
+            ctx.sorted_node_map    = sorted_node_map
+            _prof["ctx_setup_ms"] = (_time.perf_counter() - _ts) * 1000
+            timing["ep_total_ms"] = (_time.perf_counter() - t_total) * 1000
+            for _k, _v in _prof.items():
+                timing[_k] = _v
+            _client._timings[-1] = timing
+            return torch.zeros(1, dtype=pos.dtype, device=pos.device)
 
         # Raw position + size for movable+filler cells.
         # DREAMPlace pos layout is [movable | fixed_terminals | filler] — fixed
@@ -647,9 +708,24 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
         import numpy as _np
         n_mov = int(num_movable_nodes)
         n_fil = int(num_filler_nodes)
-        # Recover original sizes from clamped + 2*offset (= orig)
-        orig_sx_all = (node_size_x_clamped + 2.0 * offset_x).detach().cpu().numpy()
-        orig_sy_all = (node_size_y_clamped + 2.0 * offset_y).detach().cpu().numpy()
+        # ── Cache `node_size_x_clamped + 2*offset_x` ONCE per design. ──
+        # These don't change across iters but the original code recomputed
+        # the torch.add + cpu().numpy() every call (~1-2 ms wasted on bigblue3).
+        if not hasattr(_client, "_pf_sx_full"):
+            orig_sx_all_np = (node_size_x_clamped + 2.0 * offset_x).detach().cpu().numpy()
+            orig_sy_all_np = (node_size_y_clamped + 2.0 * offset_y).detach().cpu().numpy()
+            _client._pf_sx_full = _np.concatenate([
+                orig_sx_all_np[:n_mov],
+                orig_sx_all_np[num_nodes - n_fil:num_nodes],
+            ]).astype(_np.float32)
+            _client._pf_sy_full = _np.concatenate([
+                orig_sy_all_np[:n_mov],
+                orig_sy_all_np[num_nodes - n_fil:num_nodes],
+            ]).astype(_np.float32)
+        # Per-iter px/py: pos changes each iter (optimizer step). Concatenate
+        # of two contiguous slice views is a fast sequential memcpy; numpy's
+        # implementation beats np.take or pre-allocated reused buffers because
+        # fresh allocations land in clean (page-faulted) memory.
         px_full = _np.concatenate([
             pos[:n_mov].detach().cpu().numpy(),
             pos[num_nodes - n_fil:num_nodes].detach().cpu().numpy(),
@@ -658,14 +734,9 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
             pos[num_nodes:num_nodes + n_mov].detach().cpu().numpy(),
             pos[2 * num_nodes - n_fil:2 * num_nodes].detach().cpu().numpy(),
         ])
-        sx_full = _np.concatenate([
-            orig_sx_all[:n_mov],
-            orig_sx_all[num_nodes - n_fil:num_nodes],
-        ])
-        sy_full = _np.concatenate([
-            orig_sy_all[:n_mov],
-            orig_sy_all[num_nodes - n_fil:num_nodes],
-        ])
+        sx_full = _client._pf_sx_full
+        sy_full = _client._pf_sy_full
+        _prof["prep_cells_ms"] = (_time.perf_counter() - _ts) * 1000; _ts = _time.perf_counter()
 
         # One-time scatter-set audit: verify we're NOT including fixed terminals.
         # Fixed terminals in adaptec1 are macros with sizes much larger than
@@ -777,24 +848,36 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
                 "sub_dy_flat": sub_dy_flat,
                 "new_nc": new_nc,
             }
+            # ── Pre-compute the STATIC sub-cell offsets ONCE. ──
+            # iflat*sub_dx_flat is a constant per design; computing it every
+            # iter wastes ~5-15 ms on bigblue3. Same for sx/sy send buffers
+            # (cell sizes don't change). px/py still rebuilt every iter
+            # because cell positions change.
+            n_small_const = int(small_idx.size)
+            _client._pf_sub_px_offset = (iflat.astype(_np.float32) * sub_dx_flat).astype(_np.float32)
+            _client._pf_sub_py_offset = (jflat.astype(_np.float32) * sub_dy_flat).astype(_np.float32)
+            _client._pf_send_sx = _np.concatenate(
+                [sx_full[small_idx], sub_dx_flat]).astype(_np.float32)
+            _client._pf_send_sy = _np.concatenate(
+                [sy_full[small_idx], sub_dy_flat]).astype(_np.float32)
         L = _client._subcell_layout
 
         if L["big_idx"].size > 0:
-            parent = L["parent"]
-            sub_dx_flat = L["sub_dx_flat"]
-            sub_dy_flat = L["sub_dy_flat"]
-            # Sub-cell positions: parent_position + i*sub_dx, parent_position + j*sub_dy.
-            sub_px = px_full[parent] + L["iflat"] * sub_dx_flat
-            sub_py = py_full[parent] + L["jflat"] * sub_dy_flat
-            # Build final arrays: small cells first, then sub-cells.
+            # Sub-cell positions: parent + (i*dx, j*dy). The two iflat*dx /
+            # jflat*dy multiplications are now cached; only the px[parent]+offset
+            # adds remain per iter.
+            sub_px = px_full[L["parent"]] + _client._pf_sub_px_offset
+            sub_py = py_full[L["parent"]] + _client._pf_sub_py_offset
+            # Build px/py for this iter; sx/sy are constant (cached).
             px = _np.concatenate([px_full[L["small_idx"]], sub_px]).astype(_np.float32)
             py = _np.concatenate([py_full[L["small_idx"]], sub_py]).astype(_np.float32)
-            sx = _np.concatenate([sx_full[L["small_idx"]], sub_dx_flat]).astype(_np.float32)
-            sy = _np.concatenate([sy_full[L["small_idx"]], sub_dy_flat]).astype(_np.float32)
+            sx = _client._pf_send_sx
+            sy = _client._pf_send_sy
             nc_send = int(px.size)
         else:
             px, py, sx, sy = px_full, py_full, sx_full, sy_full
             nc_send = nc
+        _prof["subcell_ms"] = (_time.perf_counter() - _ts) * 1000; _ts = _time.perf_counter()
 
         if not _client._ready:
             _client.xl, _client.yl = float(xl), float(yl)
@@ -813,7 +896,33 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
             _client._shm_id[:] = _id_np
             _client._id_uploaded = True
 
+        _prof["pre_call_ms"] = (_time.perf_counter() - _ts) * 1000; _ts = _time.perf_counter()
         field_x, field_y, timing = _client.call(px, py, sx, sy)
+        _prof["call_ms"] = (_time.perf_counter() - _ts) * 1000; _ts = _time.perf_counter()
+
+        # ── First-iter setup of the C++ fast path. ──
+        # The in-process client exposes configure_cells/call_from_pos that
+        # do all per-iter prep in C++ (one fused loop). Wire it up now so
+        # iter 2+ skips ~50 ms of numpy/Python overhead at bigblue3 scale.
+        if (not getattr(_client, "_cpp_fast_path_configured", False)
+            and hasattr(_client, "configure_cells")
+            and hasattr(_client, "call_from_pos")):
+            try:
+                orig_sx_full_np = (node_size_x_clamped + 2.0 * offset_x
+                                   ).detach().cpu().numpy().astype(_np.float32)
+                orig_sy_full_np = (node_size_y_clamped + 2.0 * offset_y
+                                   ).detach().cpu().numpy().astype(_np.float32)
+                _client.configure_cells(
+                    orig_sx_full_np, orig_sy_full_np,
+                    n_movable=n_mov, n_filler=n_fil, num_nodes=num_nodes,
+                    bin_size_x=float(bin_size_x), bin_size_y=float(bin_size_y),
+                )
+                _client._cpp_fast_path_configured = True
+                print(f"[scatter_ttnn] C++ fast path armed (new_nc={_client._engine.new_nc})",
+                      flush=True)
+            except Exception as _e:
+                print(f"[scatter_ttnn] configure_cells failed: {_e}; staying on slow path",
+                      flush=True)
 
         # CPU_DCT diagnostic mode: the server wrote the bf16-decoded fp32
         # density into the fx slot (fy is zero). Run the DCT/IDCT chain on
@@ -848,6 +957,7 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
             field_x = idxst_idct.forward(auv_wu)
             field_y = idct_idxst.forward(auv_wv)
             timing["cpu_dct_ms"] = (_t_cpu_dct.perf_counter() - t_cd) * 1000
+        _prof["dct_ms"] = (_time.perf_counter() - _ts) * 1000; _ts = _time.perf_counter()
 
         ctx.field_map_x = field_x.to(pos.dtype)
         ctx.field_map_y = field_y.to(pos.dtype)
@@ -875,7 +985,11 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
         ctx.deterministic_flag = deterministic_flag
         ctx.sorted_node_map    = sorted_node_map
 
+        _prof["ctx_setup_ms"] = (_time.perf_counter() - _ts) * 1000
         timing["ep_total_ms"] = (_time.perf_counter() - t_total) * 1000
+        # Stash per-stage profiling into the per-iter timing dict
+        for _k, _v in _prof.items():
+            timing[_k] = _v
         _client._timings[-1] = timing  # replace with complete entry
 
         return torch.zeros(1, dtype=pos.dtype, device=pos.device)

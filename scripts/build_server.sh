@@ -47,13 +47,40 @@ echo "[build_server] Jobs          = $JOBS"
 # clang-20 is required (TTNN headers use C++23 reflection).
 : "${CXX:=clang++-20}"
 
+# Locate dp_env's pybind11 + python so the v19_engine pybind module can find
+# matching headers. If dp_env isn't set up, the cmake config will skip the
+# v19_engine target (see host/CMakeLists.txt's pybind11_FOUND guard).
+DP_ENV="${DP_ENV:-${FW_ROOT}/../DREAMPlace/dp_env}"
+PYBIND_CMAKE_DIR="$DP_ENV/lib/python3.8/site-packages/pybind11/share/cmake/pybind11"
+PY_EXE="$DP_ENV/bin/python3"
+
+CMAKE_EXTRA_FLAGS=()
+if [[ -d "$PYBIND_CMAKE_DIR" && -x "$PY_EXE" ]]; then
+    CMAKE_EXTRA_FLAGS+=(
+        "-Dpybind11_DIR=$PYBIND_CMAKE_DIR"
+        "-DPython3_EXECUTABLE=$PY_EXE"
+    )
+    echo "[build_server] pybind11 dir   = $PYBIND_CMAKE_DIR"
+    echo "[build_server] python exe     = $PY_EXE"
+else
+    echo "[build_server] pybind11 not found in $DP_ENV — v19_engine module will be skipped"
+fi
+
 cmake .. \
     -DCMAKE_CXX_COMPILER="$CXX" \
-    -DTT_METAL_HOME="$TT_METAL_HOME"
+    -DTT_METAL_HOME="$TT_METAL_HOME" \
+    "${CMAKE_EXTRA_FLAGS[@]}"
 
 make -j "$JOBS" density_scatter_ttnn_server v13_mcast_smoke_host \
     v13_matmul_smoke_host v13_pack_bench_host v13_accum_smoke_host \
     v13_scatter_smoke_host atomic_bench_host v19_microbench_host
+
+# v19_engine target is optional — only built when pybind11 is available.
+if [[ -d "$PYBIND_CMAKE_DIR" && -x "$PY_EXE" ]]; then
+    make -j "$JOBS" v19_engine || {
+        echo "[build_server] WARNING: v19_engine build failed (non-fatal)";
+    }
+fi
 
 echo
 echo "[build_server] OK → $BUILD_DIR/density_scatter_ttnn_server"

@@ -398,3 +398,96 @@ set_target_properties(v19_microbench_host PROPERTIES
     CXX_COMPILER_LAUNCHER ""
 )
 message(STATUS "Configured v19_microbench_host")
+
+# ───────────────────────────────────────────────────────────────────────────
+# V20 permute microbench — characterizes the proposed chip-side permute pass
+# that would replace the host fused loop. See docs/V20_CHIP_PERMUTE_HANDOFF.md.
+# ───────────────────────────────────────────────────────────────────────────
+add_executable(v20_mb_permute_host
+    v20_mb_permute_host.cpp
+)
+target_link_libraries(v20_mb_permute_host PUBLIC TT::Metalium)
+target_compile_options(v20_mb_permute_host PRIVATE
+    -O2 -Wall
+    -Wno-unused-variable
+    -Wno-unused-but-set-variable
+    -Wno-comment
+)
+target_compile_definitions(v20_mb_permute_host PRIVATE
+    "DENSITY_KERNEL_DIR=\"${_FW_ROOT}/kernels/\""
+)
+set_target_properties(v20_mb_permute_host PROPERTIES
+    CXX_COMPILER_LAUNCHER ""
+)
+message(STATUS "Configured v20_mb_permute_host")
+
+# ───────────────────────────────────────────────────────────────────────────
+# V21a electric_force (density-backward) microbench. Standalone TT-side half
+# of the two-process microbench; the Python orchestrator at
+# integration/v21_ef_microbench.py drives it and runs the CPU baseline.
+# See docs/V21_DREAMPLACE_ON_CHIP_RESEARCH.md + the V21a plan.
+# ───────────────────────────────────────────────────────────────────────────
+add_executable(v21_ef_microbench
+    v21_electric_force_microbench_host.cpp
+)
+target_link_libraries(v21_ef_microbench PUBLIC TT::Metalium)
+target_compile_options(v21_ef_microbench PRIVATE
+    -O2 -Wall
+    -Wno-unused-variable
+    -Wno-unused-but-set-variable
+    -Wno-comment
+)
+target_compile_definitions(v21_ef_microbench PRIVATE
+    "DENSITY_KERNEL_DIR=\"${_FW_ROOT}/kernels/\""
+)
+set_target_properties(v21_ef_microbench PROPERTIES
+    CXX_COMPILER_LAUNCHER ""
+)
+message(STATUS "Configured v21_ef_microbench")
+
+# ───────────────────────────────────────────────────────────────────────────
+# V19 Rung 3 — in-process pybind11 extension.
+#
+# Builds `v19_engine` as a Python module that DREAMPlace can import directly,
+# bypassing the docker-exec/shm IPC path used by `density_scatter_ttnn_server`.
+# Handles GATHER_MODE in {v11, v11outer, v18, v18outer, v19} — the modes that
+# share the V11 setup. V13/V14 stay on the IPC server.
+#
+# Build (inside the tt-metal container, where clang-20 lives):
+#   cmake -Dpybind11_DIR=<dp_env>/lib/python3.8/site-packages/pybind11/share/cmake/pybind11
+#         -DPython3_EXECUTABLE=<dp_env>/bin/python3 ..
+#   cmake --build . --target v19_engine -j16
+# ───────────────────────────────────────────────────────────────────────────
+find_package(pybind11 CONFIG QUIET)
+if(pybind11_FOUND)
+    pybind11_add_module(v19_engine MODULE
+        v19_engine.cpp
+        v19_engine_pybind.cpp
+    )
+    target_link_libraries(v19_engine PUBLIC TT::Metalium)
+    target_include_directories(v19_engine PRIVATE ${TT_TTNN_INCLUDES})
+    target_link_libraries(v19_engine PRIVATE
+        "${TT_BUILD_USED}/lib/_ttnncpp.so"
+        "${TT_BUILD_USED}/lib/libtt_stl.so"
+    )
+    target_compile_options(v19_engine PRIVATE
+        -O2 -Wall
+        -Wno-unused-variable
+        -Wno-unused-but-set-variable
+        -Wno-comment
+        -Wno-deprecated-declarations
+        -DSPDLOG_FMT_EXTERNAL
+        -fopenmp=libgomp
+    )
+    target_link_libraries(v19_engine PRIVATE gomp)
+    target_compile_definitions(v19_engine PRIVATE
+        "DENSITY_KERNEL_DIR=\"${_FW_ROOT}/kernels/\""
+    )
+    set_target_properties(v19_engine PROPERTIES
+        CXX_COMPILER_LAUNCHER ""
+    )
+    message(STATUS "Configured v19_engine pybind11 module")
+else()
+    message(STATUS "Skipping v19_engine pybind11 module: pybind11 not found "
+                   "(pass -Dpybind11_DIR=<dp_env>/lib/python3.8/site-packages/pybind11/share/cmake/pybind11)")
+endif()
