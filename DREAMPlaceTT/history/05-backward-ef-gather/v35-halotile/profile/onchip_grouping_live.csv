@@ -1,0 +1,20 @@
+# V35 FULLY ON-CHIP backward (count->plan->place->gather), real silicon bh-38, 2026-06-03.
+# All passes on-chip (plan = 6KB host metadata only). Bit-exact rel_l2 7e-8 / nbad=0 ALL rows.
+# Warm medians (JIT excluded). prep = count+plan+place ; compute = gather ; total = prep+compute.
+# CPU = cpu16t per-iter backward baseline. speedup = CPU/total (>1 = V35 beats CPU).
+config,ncells,grid,count_ms,plan_ms,place_ms,gather_ms,prep_ms,total_ms,cpu_ms,speedup,rel_l2
+a1,210904,512,0.484,0.133,1.234,1.957,1.851,3.808,1.53,0.40,5.0e-08
+a1,210904,1024,0.483,0.121,1.245,2.121,1.850,3.971,2.27,0.57,5.7e-08
+a1,210904,2048,0.488,0.226,1.256,2.562,1.970,4.532,4.52,1.00,7.0e-08
+a2,255000,2048,0.570,0.186,1.585,3.044,2.342,5.386,5.97,1.11,7.0e-08
+a3,452000,1024,0.975,0.162,2.779,3.275,3.917,7.192,5.88,0.82,5.7e-08
+a3,452000,2048,0.979,0.222,2.833,4.280,4.035,8.315,12.62,1.52,7.0e-08
+bb1,278000,2048,0.609,0.211,1.736,3.108,2.556,5.663,7.21,1.27,7.0e-08
+bb2,558000,1024,1.188,0.149,3.490,3.581,4.827,8.408,6.30,0.75,5.7e-08
+bb2,558000,2048,1.197,0.225,3.514,4.728,4.936,9.664,13.17,1.36,7.0e-08
+bb3,1100000,1024,2.269,0.123,6.980,5.074,9.372,14.446,7.52,0.52,5.7e-08
+bb3,1100000,2048,2.269,0.174,7.067,6.858,9.510,16.368,13.85,0.85,7.0e-08
+# verdict: beats CPU 4/6 @2048 (a2,a3,bb1,bb2) + parity a1_2048; loses @512/1024 (CPU backward cheap,
+#   grouping fixed-overhead dominates) and bb3_2048 (1.1M: place-sort + count scale with cells).
+# bottleneck = on-chip grouping (count reads full 128B stash; place local-sort copy), NOT the gather.
+# next levers: compact bxl array for count (~5x), faster/SFPU place-sort; both cut the grouping tax.

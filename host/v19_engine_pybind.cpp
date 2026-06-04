@@ -34,11 +34,21 @@
 #include <vector>
 
 #include "v19_engine.h"
+#include "v21_ef_engine.h"
+#include "v22_engine.h"
+#include "v29_ef_engine.h"
+#include "fccs_ef_engine.h"
+#include "v35_ef_engine.h"
+#include "v30_ef_engine.h"
+#include <tt-metalium/host_api.hpp>
+#include <tt-metalium/distributed.hpp>
 
 namespace py = pybind11;
 using namespace pybind11::literals;
 using v19::V19Engine;
 using v19::ScatterTiming;
+using v21ef::V21EFEngine;
+using v21ef::EFTiming;
 
 // Build the per-iter timing dict in the same shape as the IPC client
 // (scatter_ttnn_client.py:511-526). IPC-bucket keys are 0.0 — that's
@@ -211,7 +221,10 @@ public:
         py::array_t<float, py::array::c_style | py::array::forcecast> orig_sx_all,
         py::array_t<float, py::array::c_style | py::array::forcecast> orig_sy_all,
         int n_movable, int n_filler, int num_nodes,
-        float bin_size_x, float bin_size_y) {
+        float bin_size_x, float bin_size_y,
+        py::array_t<float, py::array::c_style | py::array::forcecast> offx_all = py::array_t<float>(),
+        py::array_t<float, py::array::c_style | py::array::forcecast> offy_all = py::array_t<float>(),
+        py::array_t<float, py::array::c_style | py::array::forcecast> ratio_all = py::array_t<float>()) {
 
         if ((py::ssize_t)orig_sx_all.size() < num_nodes ||
             (py::ssize_t)orig_sy_all.size() < num_nodes) {
@@ -221,15 +234,34 @@ public:
         const float* osx = orig_sx_all.data();
         const float* osy = orig_sy_all.data();
 
-        // ── Extract sx/sy for movable+filler ──
+        // V31_EF_GEOM: retire the [[project_v13]] orig-size workaround. The forward
+        // scattered orig-size-at-pos (orig=clamped+2offset) so the DENSITY (center+area)
+        // matched CPU, but the electric FORCE (field-weighted, footprint-sensitive) did NOT.
+        // When set, use the REAL clamped size at (pos+offset) — matches CPU's
+        // triangle_density_function exactly → correct EF stash (backward applies ·ratio).
+        const bool ef_geom = (std::getenv("V31_EF_GEOM") && std::atoi(std::getenv("V31_EF_GEOM")));
+        const bool have_off = ef_geom && (py::ssize_t)offx_all.size() >= num_nodes
+                                       && (py::ssize_t)offy_all.size() >= num_nodes;
+        const float* aox = have_off ? offx_all.data() : nullptr;
+        const float* aoy = have_off ? offy_all.data() : nullptr;
+        const bool have_ratio = ef_geom && (py::ssize_t)ratio_all.size() >= num_nodes;
+        const float* arat = have_ratio ? ratio_all.data() : nullptr;
+
+        // ── Extract sx/sy (+ per-node offset) for movable+filler ──
         const int nc = n_movable + n_filler;
         std::vector<float> sx_full(nc), sy_full(nc);
-        std::memcpy(sx_full.data(), osx, n_movable * sizeof(float));
-        std::memcpy(sx_full.data() + n_movable,
-                    osx + (num_nodes - n_filler), n_filler * sizeof(float));
-        std::memcpy(sy_full.data(), osy, n_movable * sizeof(float));
-        std::memcpy(sy_full.data() + n_movable,
-                    osy + (num_nodes - n_filler), n_filler * sizeof(float));
+        offx_nc_.assign(nc, 0.0f); offy_nc_.assign(nc, 0.0f);   // dreamplace offset, nc-space (0 unless EF-geom)
+        auto gather=[&](float* dst, const float* src){
+            std::memcpy(dst, src, n_movable*sizeof(float));
+            std::memcpy(dst+n_movable, src+(num_nodes-n_filler), n_filler*sizeof(float)); };
+        gather(sx_full.data(), osx); gather(sy_full.data(), osy);
+        std::vector<float> ratio_nc(nc, 1.0f);
+        if (have_off) {
+            gather(offx_nc_.data(), aox); gather(offy_nc_.data(), aoy);
+            // clamped = orig - 2*offset (offset = (orig-clamped)/2)
+            for (int i=0;i<nc;++i){ sx_full[i]-=2.0f*offx_nc_[i]; sy_full[i]-=2.0f*offy_nc_[i]; }
+        }
+        if (have_ratio) gather(ratio_nc.data(), arat);
 
         // ── Big-cell sub-tiling layout ──
         // V11/V19 scatter kernels walk at most 8 bins per cell. A cell that
@@ -341,9 +373,13 @@ public:
         send_sy_arr_ = py::array_t<float>(new_nc);
         float* ssx = send_sx_arr_.mutable_data();
         float* ssy = send_sy_arr_.mutable_data();
+        std::vector<float> send_ratio(new_nc, 1.0f);   // per-slot ratio (scatter order) for density ·ratio
+        subcell_parent_.assign(new_nc, 0);   // per-(sub)cell parent active-cell index (0..nc-1)
         for (int i = 0; i < new_nc; ++i) {
             int pre = sort_idx[i];
             int parent = ps_parent[pre];  // 0..nc-1 (movable+filler space)
+            subcell_parent_[i] = parent;  // FCCS: map each sub-cell's grad back to its parent
+            send_ratio[i] = ratio_nc[parent];
             int pos_xi, pos_yi;
             if (parent < n_movable) {
                 pos_xi = parent;
@@ -355,13 +391,17 @@ public:
             }
             src_idx_x_[i] = pos_xi;
             src_idx_y_[i] = pos_yi;
-            offset_x_[i] = (float)ps_iflat[pre] * ps_sx[pre];
-            offset_y_[i] = (float)ps_jflat[pre] * ps_sy[pre];
+            // node_x = pos + dreamplace_offset(parent) + sub-cell offset. The dreamplace
+            // offset is 0 unless V31_EF_GEOM (then sizes are clamped, so this puts the cell
+            // at the CPU electric-force footprint clamped-at-(pos+offset)).
+            offset_x_[i] = offx_nc_[parent] + (float)ps_iflat[pre] * ps_sx[pre];
+            offset_y_[i] = offy_nc_[parent] + (float)ps_jflat[pre] * ps_sy[pre];
             ssx[i] = ps_sx[pre];
             ssy[i] = ps_sy[pre];
         }
 
         new_nc_ = new_nc;
+        if (have_ratio) eng_.set_ef_ratio(send_ratio.data(), new_nc);   // V31_EF_GEOM: density ·ratio
         // Pre-allocate per-iter send buffers.
         send_px_arr_ = py::array_t<float>(new_nc);
         send_py_arr_ = py::array_t<float>(new_nc);
@@ -451,13 +491,428 @@ public:
         );
     }
 
+    // ── V21 electric_force on-chip integration. ──
+    //
+    // configure_electric_force(ox, oy, nsx_clamped, nsy_clamped, ratio):
+    //   one-time upload of per-cell constants. Lazily creates the V21EFEngine
+    //   using V19's mesh device (shared chip session).
+    //
+    // compute_electric_force(pos, field_x, field_y):
+    //   per-iter call. Uploads pos + field_x + field_y, runs V21 EF program,
+    //   returns (grad_x, grad_y, timing_dict) with grad arrays each of length
+    //   num_nodes. The grad is negated (-gx, -gy) — matches CPU
+    //   electric_potential_cpp.electric_force output semantics.
+    void configure_electric_force(
+        py::array_t<float, py::array::c_style | py::array::forcecast> ox_np,
+        py::array_t<float, py::array::c_style | py::array::forcecast> oy_np,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsx_np,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsy_np,
+        py::array_t<float, py::array::c_style | py::array::forcecast> ratio_np,
+        int num_nodes,
+        float xl, float yl, float bsx, float bsy) {
+        if (num_nodes <= 0) {
+            throw std::invalid_argument(
+                "configure_electric_force: num_nodes must be > 0");
+        }
+        if (!ef_engine_) {
+            void* mesh_device = eng_.mesh_device_ptr();
+            if (!mesh_device) {
+                throw std::runtime_error(
+                    "configure_electric_force: V19 mesh_device_ptr() is null");
+            }
+            ef_engine_ = std::make_unique<V21EFEngine>(
+                mesh_device,
+                eng_.M(), eng_.N(),
+                num_nodes,
+                xl, yl, bsx, bsy);
+            // Eagerly JIT-compile the V21 EF program so the first compute()
+            // call doesn't pay 9 s of warmup mid-iteration.
+            ef_engine_->prewarm();
+        }
+        ef_engine_->configure_constants(
+            ox_np.data(), oy_np.data(),
+            nsx_np.data(), nsy_np.data(),
+            ratio_np.data(),
+            num_nodes);
+    }
+
+    // configure_electric_force_full: takes FULL-DREAMPlace-layout arrays plus
+    // a `sel` index array; engine stores the sel and does gather/scatter in
+    // C++ on each compute(), eliminating per-iter Python masking.
+    void configure_electric_force_full(
+        py::array_t<float, py::array::c_style | py::array::forcecast> ox_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> oy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> ratio_full,
+        py::array_t<int32_t, py::array::c_style | py::array::forcecast> sel_np,
+        int num_total_nodes,
+        float xl, float yl, float bsx, float bsy) {
+        const int num_active = static_cast<int>(sel_np.size());
+        if (num_active <= 0) {
+            throw std::invalid_argument(
+                "configure_electric_force_full: sel must be non-empty");
+        }
+        if (!ef_engine_) {
+            void* mesh_device = eng_.mesh_device_ptr();
+            if (!mesh_device) {
+                throw std::runtime_error("V19 mesh_device_ptr() is null");
+            }
+            ef_engine_ = std::make_unique<V21EFEngine>(
+                mesh_device,
+                eng_.M(), eng_.N(),
+                num_active,
+                xl, yl, bsx, bsy);
+            // V23: configure BEFORE prewarm so adaptive max_k/max_h are known
+            // when the program (with its JIT defines + CB sizes) is built.
+            ef_engine_->configure_with_sel(
+                ox_full.data(), oy_full.data(),
+                nsx_full.data(), nsy_full.data(),
+                ratio_full.data(),
+                sel_np.data(), num_active,
+                num_total_nodes);
+            ef_engine_->prewarm();
+        } else {
+            ef_engine_->configure_with_sel(
+                ox_full.data(), oy_full.data(),
+                nsx_full.data(), nsy_full.data(),
+                ratio_full.data(),
+                sel_np.data(), num_active,
+                num_total_nodes);
+        }
+    }
+
+    // compute_electric_force_full: in-place writes -grad into `grad_full`.
+    // Returns timing dict only. The output array (grad_full) is assumed to
+    // be pre-zeroed for indices outside `sel` (fixed terminals).
+    py::dict compute_electric_force_full(
+        py::array_t<float, py::array::c_style | py::array::forcecast> pos_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fy_full,
+        py::array_t<float, py::array::c_style> grad_full) {
+        if (!ef_engine_) {
+            throw std::runtime_error(
+                "compute_electric_force_full: configure_electric_force_full() first");
+        }
+        EFTiming t{};
+        {
+            py::gil_scoped_release rel;
+            ef_engine_->compute_from_full(
+                pos_full.data(), fx_full.data(), fy_full.data(),
+                grad_full.mutable_data(),
+                &t);
+        }
+        py::dict td;
+        td["h2d_pos_ms"]   = t.h2d_pos_ms;
+        td["h2d_field_ms"] = t.h2d_field_ms;
+        td["compute_ms"]   = t.compute_ms;
+        td["d2h_grad_ms"]  = t.d2h_grad_ms;
+        td["total_ms"]     = t.total_ms;
+        td["launches"]     = t.launches;
+        return td;
+    }
+
+    // compute_electric_force_full_chip: zero-copy-fields variant. Reads
+    // field_x and field_y directly from chip DRAM at the given addresses
+    // (which V19's DCT solver kept alive — see latest_field_addrs()).
+    py::dict compute_electric_force_full_chip(
+        py::array_t<float, py::array::c_style | py::array::forcecast> pos_full,
+        uint32_t fx_chip_addr, uint32_t fy_chip_addr,
+        py::array_t<float, py::array::c_style> grad_full) {
+        if (!ef_engine_) {
+            throw std::runtime_error(
+                "compute_electric_force_full_chip: configure_electric_force_full() first");
+        }
+        EFTiming t{};
+        {
+            py::gil_scoped_release rel;
+            ef_engine_->compute_from_full_chip_fields(
+                pos_full.data(), fx_chip_addr, fy_chip_addr,
+                grad_full.mutable_data(),
+                &t);
+        }
+        py::dict td;
+        td["h2d_pos_ms"]   = t.h2d_pos_ms;
+        td["h2d_field_ms"] = t.h2d_field_ms;  // 0 for zero-copy path
+        td["compute_ms"]   = t.compute_ms;
+        td["d2h_grad_ms"]  = t.d2h_grad_ms;
+        td["total_ms"]     = t.total_ms;
+        td["launches"]     = t.launches;
+        return td;
+    }
+
+    // ── V29 EF backward (L1-resident multi-bin gather) ──
+    void configure_electric_force_v29(
+        py::array_t<float, py::array::c_style | py::array::forcecast> ox_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> oy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> ratio_full,
+        py::array_t<int32_t, py::array::c_style | py::array::forcecast> sel_np,
+        int num_total_nodes, float xl, float yl, float bsx, float bsy) {
+        const int num_active = static_cast<int>(sel_np.size());
+        if (num_active <= 0) throw std::invalid_argument("configure_electric_force_v29: empty sel");
+        if (!v29_engine_) {
+            void* md = eng_.mesh_device_ptr();
+            if (!md) throw std::runtime_error("V19 mesh_device_ptr() is null");
+            v29_engine_ = std::make_unique<v29ef::V29EFEngine>(md, eng_.M(), eng_.N(), num_active, xl, yl, bsx, bsy);
+        }
+        v29_engine_->configure_with_sel(ox_full.data(), oy_full.data(), nsx_full.data(),
+            nsy_full.data(), ratio_full.data(), sel_np.data(), num_active, num_total_nodes);
+    }
+
+    py::dict compute_electric_force_v29(
+        py::array_t<float, py::array::c_style | py::array::forcecast> pos_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fy_full,
+        py::array_t<float, py::array::c_style> grad_full) {
+        if (!v29_engine_) throw std::runtime_error("compute_electric_force_v29: configure first");
+        v29ef::V29Timing t{};
+        // PREP-REUSE: if the forward stashed per-cell geometry (V31_STASH=1 V31_GEOM=1),
+        // point P1 at it so the backward buckets pre-computed overlaps instead of
+        // recomputing them in soft-float. Valid only after the forward has run once
+        // (the buffer is allocated lazily in the forward build); 0 → legacy prepbucket.
+        v29_engine_->set_geom_source(eng_.v31_geom_addr(), eng_.v31_geom_pg());
+        { py::gil_scoped_release rel;
+          v29_engine_->compute_from_full(pos_full.data(), fx_full.data(), fy_full.data(),
+                                         grad_full.mutable_data(), &t); }
+        py::dict td; td["h2d_ms"]=t.h2d_ms; td["prep_ms"]=t.prep_ms; td["gather_ms"]=t.gather_ms;
+        td["d2h_ms"]=t.d2h_ms; td["total_ms"]=t.total_ms; return td;
+    }
+
+    // ── FCCS EF backward (field-cast / cell-stationary, balanced slices) ──
+    void configure_electric_force_fccs(
+        py::array_t<float, py::array::c_style | py::array::forcecast> ox_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> oy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> ratio_full,
+        py::array_t<int32_t, py::array::c_style | py::array::forcecast> sel_np,
+        int num_total_nodes, float xl, float yl, float bsx, float bsy) {
+        const int num_active = static_cast<int>(sel_np.size());
+        if (num_active <= 0) throw std::invalid_argument("configure_electric_force_fccs: empty sel");
+        if (!fccs_engine_) {
+            void* md = eng_.mesh_device_ptr();
+            if (!md) throw std::runtime_error("V19 mesh_device_ptr() is null");
+            fccs_engine_ = std::make_unique<fccsef::FCCSEFEngine>(md, eng_.M(), eng_.N(), num_active, xl, yl, bsx, bsy);
+        }
+        fccs_engine_->configure_with_sel(ox_full.data(), oy_full.data(), nsx_full.data(),
+            nsy_full.data(), ratio_full.data(), sel_np.data(), num_active, num_total_nodes);
+    }
+    py::dict compute_electric_force_fccs(
+        py::array_t<float, py::array::c_style | py::array::forcecast> pos_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fy_full,
+        py::array_t<float, py::array::c_style> grad_full) {
+        if (!fccs_engine_) throw std::runtime_error("compute_electric_force_fccs: configure first");
+        fccsef::FCCSTiming t{};
+        // reads the forward's V31_GEOM stash (forward must run with V31_STASH=1 V31_GEOM=1)
+        fccs_engine_->set_geom_source(eng_.v31_geom_addr(), eng_.v31_geom_pg());
+        { py::gil_scoped_release rel;
+          fccs_engine_->compute_from_full(pos_full.data(), fx_full.data(), fy_full.data(),
+                                          grad_full.mutable_data(), &t); }
+        py::dict td; td["h2d_ms"]=t.h2d_ms; td["quant_ms"]=t.quant_ms; td["run_ms"]=t.run_ms;
+        td["gather_ms"]=t.run_ms; td["d2h_ms"]=t.d2h_ms; td["total_ms"]=t.total_ms; return td;
+    }
+    py::array_t<int32_t> read_fccs_fxb() {
+        std::vector<int32_t> v = fccs_engine_ ? fccs_engine_->read_fxb() : std::vector<int32_t>{};
+        py::array_t<int32_t> a((py::ssize_t)v.size());
+        if (!v.empty()) std::memcpy(a.mutable_data(), v.data(), v.size()*sizeof(int32_t));
+        return a;
+    }
+    py::array_t<int64_t> read_fccs_grad_raw() {
+        std::vector<int64_t> v = fccs_engine_ ? fccs_engine_->read_grad_raw() : std::vector<int64_t>{};
+        py::array_t<int64_t> a((py::ssize_t)v.size());
+        if (!v.empty()) std::memcpy(a.mutable_data(), v.data(), v.size()*sizeof(int64_t));
+        return a;
+    }
+    // chip-resident field variant: reads field from chip-DCT DRAM (latest_field_addrs) — no h2d.
+    py::dict compute_electric_force_fccs_chip(
+        py::array_t<float, py::array::c_style | py::array::forcecast> pos_full,
+        uint32_t fx_chip_addr, uint32_t fy_chip_addr,
+        py::array_t<float, py::array::c_style> grad_full) {
+        if (!fccs_engine_) throw std::runtime_error("compute_electric_force_fccs_chip: configure first");
+        (void)pos_full;
+        fccsef::FCCSTiming t{};
+        fccs_engine_->set_geom_source(eng_.v31_geom_addr(), eng_.v31_geom_pg());
+        { py::gil_scoped_release rel;
+          fccs_engine_->compute_from_chip(fx_chip_addr, fy_chip_addr, grad_full.mutable_data(), &t); }
+        py::dict td; td["h2d_ms"]=t.h2d_ms; td["quant_ms"]=t.quant_ms; td["run_ms"]=t.run_ms;
+        td["gather_ms"]=t.run_ms; td["d2h_ms"]=t.d2h_ms; td["total_ms"]=t.total_ms; return td;
+    }
+
+    // ── V35 fully-on-chip Forward-Grouped Halo-Tile EF backward ──
+    void configure_electric_force_v35(
+        py::array_t<float, py::array::c_style | py::array::forcecast> ox_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> oy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> ratio_full,
+        py::array_t<int32_t, py::array::c_style | py::array::forcecast> sel_np,
+        int num_total_nodes, float xl, float yl, float bsx, float bsy) {
+        const int num_active = static_cast<int>(sel_np.size());
+        if (num_active <= 0) throw std::invalid_argument("configure_electric_force_v35: empty sel");
+        if (!v35_engine_) {
+            void* md = eng_.mesh_device_ptr();
+            if (!md) throw std::runtime_error("V19 mesh_device_ptr() is null");
+            v35_engine_ = std::make_unique<v35ef::V35EFEngine>(md, eng_.M(), eng_.N(), num_active, xl, yl, bsx, bsy);
+        }
+        v35_engine_->configure_with_sel(ox_full.data(), oy_full.data(), nsx_full.data(),
+            nsy_full.data(), ratio_full.data(), sel_np.data(), num_active, num_total_nodes);
+    }
+    py::dict compute_electric_force_v35_chip(
+        py::array_t<float, py::array::c_style | py::array::forcecast> pos_full,
+        uint32_t fx_chip_addr, uint32_t fy_chip_addr,
+        py::array_t<float, py::array::c_style> grad_full) {
+        if (!v35_engine_) throw std::runtime_error("compute_electric_force_v35_chip: configure first");
+        (void)pos_full;
+        v35ef::V35Timing t{};
+        v35_engine_->set_geom_source(eng_.v31_geom_addr(), eng_.v31_geom_pg());
+        { py::gil_scoped_release rel;
+          v35_engine_->compute_from_chip(fx_chip_addr, fy_chip_addr, grad_full.mutable_data(), &t); }
+        py::dict td; td["count_ms"]=t.count_ms; td["plan_ms"]=t.plan_ms; td["place_ms"]=t.place_ms;
+        td["gather_ms"]=t.gather_ms; td["d2h_ms"]=t.d2h_ms; td["run_ms"]=t.gather_ms; td["total_ms"]=t.total_ms; return td;
+    }
+
+    // ── V30 field-stationary EF backward (hybrid: host prep+route, chip gather+atomic) ──
+    void configure_electric_force_v30(
+        py::array_t<float, py::array::c_style | py::array::forcecast> ox_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> oy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> ratio_full,
+        py::array_t<int32_t, py::array::c_style | py::array::forcecast> sel_np,
+        int num_total_nodes, float xl, float yl, float bsx, float bsy) {
+        const int num_active = static_cast<int>(sel_np.size());
+        if (num_active <= 0) throw std::invalid_argument("configure_electric_force_v30: empty sel");
+        if (!v30_engine_) {
+            void* md = eng_.mesh_device_ptr();
+            if (!md) throw std::runtime_error("V19 mesh_device_ptr() is null");
+            v30_engine_ = std::make_unique<v30ef::V30EFEngine>(md, eng_.M(), eng_.N(), num_active, xl, yl, bsx, bsy);
+        }
+        v30_engine_->configure_with_sel(ox_full.data(), oy_full.data(), nsx_full.data(),
+            nsy_full.data(), ratio_full.data(), sel_np.data(), num_active, num_total_nodes);
+    }
+    py::dict compute_electric_force_v30(
+        py::array_t<float, py::array::c_style | py::array::forcecast> pos_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fy_full,
+        py::array_t<float, py::array::c_style> grad_full) {
+        if (!v30_engine_) throw std::runtime_error("compute_electric_force_v30: configure first");
+        v30ef::V30Timing t{};
+        { py::gil_scoped_release rel;
+          v30_engine_->compute_from_full(pos_full.data(), fx_full.data(), fy_full.data(),
+                                         grad_full.mutable_data(), &t); }
+        py::dict td; td["h2d_ms"]=t.h2d_ms; td["prep_ms"]=t.prep_ms; td["gather_ms"]=t.gather_ms;
+        td["d2h_ms"]=t.d2h_ms; td["total_ms"]=t.total_ms; return td;
+    }
+
+    // ── V31: no-host backward reading the forward stash (V31_STASH=1 forward) ──
+    py::dict compute_electric_force_v31(
+        py::array_t<int32_t, py::array::c_style | py::array::forcecast> sel_np,
+        py::array_t<float, py::array::c_style | py::array::forcecast> ratio_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fy_full,
+        py::array_t<float, py::array::c_style> grad_full,
+        int num_total_nodes) {
+        const int na = static_cast<int>(sel_np.size());
+        if (na <= 0) throw std::invalid_argument("compute_electric_force_v31: empty sel");
+        double tm[4] = {0,0,0,0};
+        { py::gil_scoped_release rel;
+          eng_.compute_electric_force_v31(sel_np.data(), ratio_full.data(), na, num_total_nodes,
+              fx_full.data(), fy_full.data(), grad_full.mutable_data(), tm); }
+        py::dict td; td["h2d_ms"]=tm[0]; td["gather_ms"]=tm[1]; td["d2h_ms"]=tm[2]; td["total_ms"]=tm[3];
+        return td;
+    }
+
+    // Latest DCT field DRAM addresses (from V19's last solve_device() call).
+    // Returns (0, 0) if not yet computed. Used by the zero-copy backward.
+    // DEBUG: read the V31_GEOM buffer (int32 words, 32/record). For diagnosing the stash.
+    py::array_t<int32_t> read_geom() {
+        auto v = eng_.read_geom();
+        py::array_t<int32_t> a((py::ssize_t)v.size());
+        if (!v.empty()) std::memcpy(a.mutable_data(), v.data(), v.size()*sizeof(int32_t));
+        return a;
+    }
+    py::tuple latest_field_addrs() {
+        return py::make_tuple(
+            eng_.latest_field_x_addr(),
+            eng_.latest_field_y_addr());
+    }
+
+    // Read+clear the device profiler buffer (call per-iter so it never overflows;
+    // emits to generated/profiler/.logs/profile_log_device.csv). PROFILER builds only.
+    void dump_profiler() {
+        void* md = eng_.mesh_device_ptr();
+        if (md) tt::tt_metal::ReadMeshDeviceProfilerResults(
+            *static_cast<tt::tt_metal::distributed::MeshDevice*>(md));
+    }
+
+    // Skip the field d2h in V19's DCT solver. Use when V21 EF will read
+    // the field maps from chip directly (zero-copy backward).
+    void set_skip_field_d2h(bool skip) {
+        eng_.set_skip_field_d2h(skip);
+        skip_field_d2h_ = skip;
+    }
+
+    // Per-(sub)cell parent active-cell index (0..nc-1), length new_nc. After big-cell
+    // sub-tiling the forward stashes new_nc records; the FCCS backward must configure
+    // with new_nc cells and accumulate each sub-cell's gradient back into its parent.
+    py::array_t<int32_t> subcell_parent() {
+        return py::array_t<int32_t>((py::ssize_t)subcell_parent_.size(),
+                                    subcell_parent_.data());
+    }
+
+    py::tuple compute_electric_force(
+        py::array_t<float, py::array::c_style | py::array::forcecast> pos_np,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fx_np,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fy_np) {
+        if (!ef_engine_) {
+            throw std::runtime_error(
+                "compute_electric_force: call configure_electric_force() first");
+        }
+        const int num_nodes = ef_engine_->num_nodes_configured();
+        if ((py::ssize_t)pos_np.size() < 2 * num_nodes) {
+            throw std::invalid_argument(
+                "compute_electric_force: pos must have ≥ 2*num_nodes entries");
+        }
+        const py::ssize_t MN = (py::ssize_t)eng_.M() * (py::ssize_t)eng_.N();
+        if ((py::ssize_t)fx_np.size() < MN ||
+            (py::ssize_t)fy_np.size() < MN) {
+            throw std::invalid_argument(
+                "compute_electric_force: field arrays must have ≥ M*N entries");
+        }
+
+        auto grad_x = py::array_t<float>({(py::ssize_t)num_nodes});
+        auto grad_y = py::array_t<float>({(py::ssize_t)num_nodes});
+
+        EFTiming t{};
+        {
+            py::gil_scoped_release rel;
+            ef_engine_->compute(pos_np.data(),
+                                fx_np.data(), fy_np.data(),
+                                grad_x.mutable_data(), grad_y.mutable_data(),
+                                &t);
+        }
+        py::dict td;
+        td["h2d_pos_ms"]   = t.h2d_pos_ms;
+        td["h2d_field_ms"] = t.h2d_field_ms;
+        td["compute_ms"]   = t.compute_ms;
+        td["d2h_grad_ms"]  = t.d2h_grad_ms;
+        td["total_ms"]     = t.total_ms;
+        td["launches"]     = t.launches;
+        return py::make_tuple(grad_x, grad_y, td);
+    }
+
 private:
     V19Engine eng_;
     bool cpu_dct_ = false;
     py::array_t<float> fy_zero_arr_;   // pre-zeroed, reused across iters (CPU_DCT=1 only)
     double last_fused_loop_ms_ = 0.0;
+    std::vector<int32_t> subcell_parent_;   // [new_nc] parent active-cell index per (sub)cell
 
     // configure_cells() state — set once, reused per iter.
+    std::vector<float> offx_nc_, offy_nc_;   // dreamplace offset (nc-space), 0 unless V31_EF_GEOM
     bool configured_ = false;
     int  new_nc_ = 0;
     int  n_movable_ = 0;
@@ -471,6 +926,58 @@ private:
     py::array_t<float>   send_sy_arr_;
     py::array_t<float>   send_px_arr_;
     py::array_t<float>   send_py_arr_;
+
+    // V21 EF engine (created on first configure_electric_force()).
+    std::unique_ptr<V21EFEngine> ef_engine_;
+    bool skip_field_d2h_ = false;
+
+    // V29 EF engine (L1-resident multi-bin gather backward; created on first
+    // configure_electric_force_v29()).
+    std::unique_ptr<v29ef::V29EFEngine> v29_engine_;
+    // FCCS EF engine (field-cast / cell-stationary backward; created on first
+    // configure_electric_force_fccs()).
+    std::unique_ptr<fccsef::FCCSEFEngine> fccs_engine_;
+    std::unique_ptr<v35ef::V35EFEngine> v35_engine_;
+    std::unique_ptr<v30ef::V30EFEngine> v30_engine_;
+
+    // ── V22 chip-resident optimizer (created on first v22_configure) ──
+    std::unique_ptr<v22::V22OptEngine> opt_engine_;
+    std::vector<float> v22_pos_buf_;  // reused d2h buffer for get_pos
+
+public:
+    void v22_configure(py::array_t<float, py::array::c_style | py::array::forcecast> lo,
+                       py::array_t<float, py::array::c_style | py::array::forcecast> hi,
+                       py::array_t<float, py::array::c_style | py::array::forcecast> pin_w,
+                       py::array_t<float, py::array::c_style | py::array::forcecast> area,
+                       int num_nodes) {
+        if (!opt_engine_) {
+            void* md = eng_.mesh_device_ptr();
+            if (!md) throw std::runtime_error("V19 mesh_device_ptr() is null");
+            opt_engine_ = std::make_unique<v22::V22OptEngine>(md, num_nodes);
+            v22_pos_buf_.assign((size_t)num_nodes * 2u, 0.0f);
+        }
+        opt_engine_->configure(lo.data(), hi.data(), pin_w.data(), area.data());
+        opt_engine_->prewarm();
+    }
+    void v22_set_pos(py::array_t<float, py::array::c_style | py::array::forcecast> v_init) {
+        if (!opt_engine_) throw std::runtime_error("v22_set_pos: v22_configure() first");
+        opt_engine_->set_pos(v_init.data());
+    }
+    py::dict v22_step_resident(py::array_t<float, py::array::c_style | py::array::forcecast> wl_grad,
+                               py::array_t<float, py::array::c_style | py::array::forcecast> density_grad,
+                               float alpha, float coef, float density_weight) {
+        if (!opt_engine_) throw std::runtime_error("v22_step_resident: v22_configure() first");
+        v22::OptTiming t{};
+        opt_engine_->step_resident(wl_grad.data(), density_grad.data(),
+                                   alpha, coef, density_weight, &t);
+        py::dict d;
+        d["h2d_ms"] = t.h2d_ms; d["compute_ms"] = t.compute_ms; d["total_ms"] = t.total_ms;
+        return d;
+    }
+    void v22_get_pos(py::array_t<float, py::array::c_style> out) {
+        if (!opt_engine_) throw std::runtime_error("v22_get_pos: v22_configure() first");
+        opt_engine_->get_pos(out.mutable_data());
+    }
 };
 
 PYBIND11_MODULE(v19_engine, m) {
@@ -511,10 +1018,13 @@ PYBIND11_MODULE(v19_engine, m) {
              "orig_sx_all"_a, "orig_sy_all"_a,
              "n_movable"_a, "n_filler"_a, "num_nodes"_a,
              "bin_size_x"_a, "bin_size_y"_a,
+             "offx_all"_a = py::array_t<float>(), "offy_all"_a = py::array_t<float>(),
+             "ratio_all"_a = py::array_t<float>(),
              "One-time setup of the big-cell sub-tile + cell-sort layout. "
-             "Pass orig_sx_all = node_size_x_clamped + 2*offset_x as numpy "
-             "float32 of length num_nodes (same for sy). After this returns, "
-             "scatter_from_pos(pos) can run per-iter with minimal Python work.")
+             "Pass orig_sx_all = node_size_x_clamped + 2*offset_x. When V31_EF_GEOM=1 "
+             "AND offx_all/offy_all (dreamplace offset, len num_nodes) are given, the "
+             "forward uses the REAL clamped size at pos+offset (matches CPU electric_force) "
+             "instead of the orig-size workaround.")
 
         .def_property_readonly("new_nc", &V19EngineWrap::new_nc,
              "After configure_cells(), the cell count fed to the chip "
@@ -527,5 +1037,125 @@ PYBIND11_MODULE(v19_engine, m) {
              "y_movable | y_fixed | y_filler]). Does cell extraction, "
              "big-cell sub-tile, sort permutation, and the chip dispatch "
              "in one C++ pass — no per-iter numpy temporaries. Returns "
-             "(density, field_x, field_y, timing_dict).");
+             "(density, field_x, field_y, timing_dict).")
+
+        .def("configure_electric_force",
+             &V19EngineWrap::configure_electric_force,
+             "ox"_a, "oy"_a, "nsx_clamped"_a, "nsy_clamped"_a, "ratio"_a,
+             "num_nodes"_a,
+             "xl"_a, "yl"_a, "bsx"_a, "bsy"_a,
+             "One-time upload of per-cell constants for V21 electric_force on "
+             "chip. Lazily creates the V21EFEngine using V19's mesh device.")
+
+        .def("compute_electric_force",
+             &V19EngineWrap::compute_electric_force,
+             "pos"_a, "field_x"_a, "field_y"_a,
+             "Run V21 electric_force on chip. Inputs: pos (length 2*num_nodes), "
+             "field_x and field_y (each length M*N, row-major). Returns "
+             "(grad_x, grad_y, timing_dict).")
+
+        .def("configure_electric_force_full",
+             &V19EngineWrap::configure_electric_force_full,
+             "ox_full"_a, "oy_full"_a, "nsx_clamped_full"_a, "nsy_clamped_full"_a,
+             "ratio_full"_a, "sel"_a, "num_total_nodes"_a,
+             "xl"_a, "yl"_a, "bsx"_a, "bsy"_a,
+             "Like configure_electric_force, but accepts full-DREAMPlace-layout "
+             "arrays + a `sel` index array. Engine stores sel internally so "
+             "compute_electric_force_full() can do gather/scatter in C++.")
+
+        .def("compute_electric_force_full",
+             &V19EngineWrap::compute_electric_force_full,
+             "pos_full"_a, "fx_full"_a, "fy_full"_a, "grad_full"_a,
+             "Per-iter V21 EF call with full-layout inputs. Reads pos_full "
+             "(2*num_total_nodes), fx_full/fy_full (M*N each), writes -grad into "
+             "grad_full at indices given by `sel` (caller pre-zeros grad_full). "
+             "Returns the per-iter timing dict.")
+
+        .def("dump_profiler", &V19EngineWrap::dump_profiler,
+             "Read+clear device profiler buffer (per-iter; PROFILER builds).")
+        .def("latest_field_addrs", &V19EngineWrap::latest_field_addrs,
+             "Return (fx_chip_addr, fy_chip_addr) — DRAM addresses of V19's most "
+             "recent DCT field maps (still resident on chip). Use with "
+             "compute_electric_force_full_chip() to skip d2h+h2d.")
+        .def("read_geom", &V19EngineWrap::read_geom,
+             "DEBUG: read the V31_GEOM buffer as int32 (32 words/record).")
+        .def("read_fccs_fxb", &V19EngineWrap::read_fccs_fxb, "DEBUG: FCCS quantized fx field (int32).")
+        .def("read_fccs_grad_raw", &V19EngineWrap::read_fccs_grad_raw, "DEBUG: FCCS raw int64 grad buffer.")
+
+        .def("subcell_parent", &V19EngineWrap::subcell_parent,
+             "Per-(sub)cell parent active-cell index (len new_nc) for FCCS sub-cell mapping.")
+        .def("set_skip_field_d2h", &V19EngineWrap::set_skip_field_d2h,
+             "skip"_a,
+             "Skip the field_x/field_y EnqueueReadMeshBuffer in V19's DCT solver. "
+             "Set to True when V21 EF will read fields from chip directly via "
+             "latest_field_addrs(). Saves M*N*4*2 bytes of d2h per iter. The "
+             "Python-side numpy arrays still get allocated but are not filled — "
+             "callers must NOT consume them when this flag is on.")
+
+        .def("compute_electric_force_full_chip",
+             &V19EngineWrap::compute_electric_force_full_chip,
+             "pos_full"_a, "fx_chip_addr"_a, "fy_chip_addr"_a, "grad_full"_a,
+             "Zero-copy-field variant: V21 EF reads field_x, field_y directly "
+             "from chip DRAM at the given addresses (skips field_map d2h+h2d). "
+             "Use V19's latest_field_addrs() to get them.")
+
+        // ── V29 EF backward (L1-resident multi-bin gather) ──
+        .def("configure_electric_force_v29", &V19EngineWrap::configure_electric_force_v29,
+             "ox_full"_a, "oy_full"_a, "nsx_full"_a, "nsy_full"_a, "ratio_full"_a,
+             "sel"_a, "num_total_nodes"_a, "xl"_a, "yl"_a, "bsx"_a, "bsy"_a,
+             "Configure the V29 backward engine (same args as configure_electric_force_full).")
+        .def("compute_electric_force_v29", &V19EngineWrap::compute_electric_force_v29,
+             "pos_full"_a, "fx_full"_a, "fy_full"_a, "grad_full"_a,
+             "V29 on-chip backward: prep+bucket → L1-resident multi-bin gather → "
+             "scatter grad. Writes raw force (no negation) into grad_full[sel].")
+        .def("configure_electric_force_fccs", &V19EngineWrap::configure_electric_force_fccs,
+             "ox_full"_a, "oy_full"_a, "nsx_full"_a, "nsy_full"_a, "ratio_full"_a,
+             "sel"_a, "num_total_nodes"_a, "xl"_a, "yl"_a, "bsx"_a, "bsy"_a,
+             "Configure the FCCS field-cast / cell-stationary backward engine.")
+        .def("compute_electric_force_fccs", &V19EngineWrap::compute_electric_force_fccs,
+             "pos_full"_a, "fx_full"_a, "fy_full"_a, "grad_full"_a,
+             "FCCS on-chip backward: field multicast to all cores + balanced cell slices + "
+             "in-L1 sort + int MAC. Reads the forward V31_GEOM stash. Writes raw force "
+             "(no negation) into grad_full[sel].")
+        .def("compute_electric_force_fccs_chip", &V19EngineWrap::compute_electric_force_fccs_chip,
+             "pos_full"_a, "fx_chip_addr"_a, "fy_chip_addr"_a, "grad_full"_a,
+             "FCCS backward reading the field from chip-DCT DRAM (latest_field_addrs) — "
+             "host-free, no field h2d. Writes raw force into grad_full[sel].")
+        .def("configure_electric_force_v35", &V19EngineWrap::configure_electric_force_v35,
+             "ox_full"_a, "oy_full"_a, "nsx_full"_a, "nsy_full"_a, "ratio_full"_a,
+             "sel"_a, "num_total_nodes"_a, "xl"_a, "yl"_a, "bsx"_a, "bsy"_a,
+             "Configure the V35 fully-on-chip Forward-Grouped Halo-Tile backward engine.")
+        .def("compute_electric_force_v35_chip", &V19EngineWrap::compute_electric_force_v35_chip,
+             "pos_full"_a, "fx_chip_addr"_a, "fy_chip_addr"_a, "grad_full"_a,
+             "V35 fully-on-chip backward (count->plan->place->gather) reading the chip-DCT "
+             "field from DRAM (latest_field_addrs). Reads the forward V31_GEOM stash. "
+             "Writes raw force into grad_full[sel].")
+        .def("configure_electric_force_v30", &V19EngineWrap::configure_electric_force_v30,
+             "ox_full"_a, "oy_full"_a, "nsx_full"_a, "nsy_full"_a, "ratio_full"_a,
+             "sel"_a, "num_total_nodes"_a, "xl"_a, "yl"_a, "bsx"_a, "bsy"_a,
+             "Configure the V30 field-stationary backward engine.")
+        .def("compute_electric_force_v30", &V19EngineWrap::compute_electric_force_v30,
+             "pos_full"_a, "fx_full"_a, "fy_full"_a, "grad_full"_a,
+             "V30 field-stationary backward: host prep+route → chip local-field gather "
+             "+ fixed-point atomic grad sum. Writes raw force (no negation) into grad_full[sel].")
+        .def("compute_electric_force_v31", &V19EngineWrap::compute_electric_force_v31,
+             "sel"_a, "ratio_full"_a, "fx_full"_a, "fy_full"_a, "grad_full"_a, "num_total_nodes"_a,
+             "V31 no-host backward: reads the forward stash (V31_STASH=1) + field, runs the "
+             "band-discovering kernel, writes raw +force into grad_full[sel].")
+
+        // ── V22 chip-resident optimizer (Phase B) ──
+        .def("v22_configure", &V19EngineWrap::v22_configure,
+             "lo"_a, "hi"_a, "pin_w"_a, "area"_a, "num_nodes"_a,
+             "One-time setup of the chip-resident optimizer. lo/hi are the "
+             "clamp bounds, pin_w/area the precondition constants (all length "
+             "2*num_nodes, optimizer order). Lazily creates V22OptEngine on "
+             "V19's mesh device + prewarms.")
+        .def("v22_set_pos", &V19EngineWrap::v22_set_pos, "v_init"_a,
+             "Upload the initial pos into the resident buffer (and seed u=v).")
+        .def("v22_step_resident", &V19EngineWrap::v22_step_resident,
+             "wl_grad"_a, "density_grad"_a, "alpha"_a, "coef"_a, "density_weight"_a,
+             "One resident optimizer step (combine→precond→nesterov→clamp) "
+             "updating chip-resident pos/u IN PLACE. Returns timing dict.")
+        .def("v22_get_pos", &V19EngineWrap::v22_get_pos, "out"_a,
+             "Download the resident pos into `out` (2*num_nodes, pre-allocated).");
 }
