@@ -1,0 +1,1 @@
+Usage: ./host/build/v21_ef_microbench --inputs <path.bin> --output <path.bin> [--mode sfpu|scalar|--v5]

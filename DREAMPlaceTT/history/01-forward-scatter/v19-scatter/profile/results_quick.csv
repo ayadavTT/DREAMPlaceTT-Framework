@@ -1,0 +1,4 @@
+kernel,design,grid,dist,n_cells,rel_l2,pass,kernel_ms,ref_ms
+v19-scatter,adaptec1,512,clouds,211447,1.958e-06,1,1.4429,317.5863
+v19-scatter,adaptec1,512,cluster,211447,1.672e-06,1,1.4606,319.4796
+v19-scatter,adaptec1,512,uniform,211447,3.890e-06,1,1.4548,322.0130

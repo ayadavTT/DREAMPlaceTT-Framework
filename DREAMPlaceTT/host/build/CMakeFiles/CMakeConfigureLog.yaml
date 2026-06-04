@@ -1,0 +1,362 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake-4.0/Modules/CMakeDetermineSystem.cmake:205 (message)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      The system is: Linux - 5.4.0-212-generic - x86_64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake-4.0/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/usr/local/share/cmake-4.0/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/usr/local/share/cmake-4.0/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
+      Compiler: /usr/bin/clang++-20 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "a.out"
+      
+      The CXX compiler identification is Clang, found in:
+        /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/4.0.2/CompilerIdCXX/a.out
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-4.0/Modules/CMakeDetermineCompilerABI.cmake:83 (try_compile)"
+      - "/usr/local/share/cmake-4.0/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    checks:
+      - "Detecting CXX compiler ABI info"
+    directories:
+      source: "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-cvGtRR"
+      binary: "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-cvGtRR"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "/usr/bin/clang-scan-deps-20"
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_CXX_SCAN_FOR_MODULES: "OFF"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_CXX_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-cvGtRR'
+        
+        Run Build Command(s): /usr/local/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_478e4/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_478e4.dir/build.make CMakeFiles/cmTC_478e4.dir/build
+        gmake[1]: Entering directory '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-cvGtRR'
+        Building CXX object CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o
+        /usr/bin/clang++-20   -v -MD -MT CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o -MF CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o.d -o CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o -c /usr/local/share/cmake-4.0/Modules/CMakeCXXCompilerABI.cpp
+        Ubuntu clang version 20.1.8 (++20250708082409+6fb913d3e2ec-1~exp1~20250708202428.132)
+        Target: x86_64-pc-linux-gnu
+        Thread model: posix
+        InstalledDir: /usr/lib/llvm-20/bin
+        Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/11
+        Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/12
+        Selected GCC installation: /usr/lib/gcc/x86_64-linux-gnu/12
+        Candidate multilib: .;@m64
+        Selected multilib: .;@m64
+         (in-process)
+         "/usr/lib/llvm-20/bin/clang" -cc1 -triple x86_64-pc-linux-gnu -emit-obj -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-cvGtRR -v -fcoverage-compilation-dir=/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-cvGtRR -resource-dir /usr/lib/llvm-20/lib/clang/20 -dependency-file CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/x86_64-linux-gnu/c++/12 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/backward -internal-isystem /usr/lib/llvm-20/lib/clang/20/include -internal-isystem /usr/local/include -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o -x c++ /usr/local/share/cmake-4.0/Modules/CMakeCXXCompilerABI.cpp
+        clang -cc1 version 20.1.8 based upon LLVM 20.1.8 default target x86_64-pc-linux-gnu
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/12/../../../../x86_64-linux-gnu/include"
+        ignoring nonexistent directory "/include"
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12
+         /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/x86_64-linux-gnu/c++/12
+         /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/backward
+         /usr/lib/llvm-20/lib/clang/20/include
+         /usr/local/include
+         /usr/include/x86_64-linux-gnu
+         /usr/include
+        End of search list.
+        Linking CXX executable cmTC_478e4
+        /usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_478e4.dir/link.txt --verbose=1
+        Ubuntu clang version 20.1.8 (++20250708082409+6fb913d3e2ec-1~exp1~20250708202428.132)
+        Target: x86_64-pc-linux-gnu
+        Thread model: posix
+        InstalledDir: /usr/lib/llvm-20/bin
+        Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/11
+        Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/12
+        Selected GCC installation: /usr/lib/gcc/x86_64-linux-gnu/12
+        Candidate multilib: .;@m64
+        Selected multilib: .;@m64
+         "/usr/bin/ld" -z relro --hash-style=gnu --build-id --eh-frame-hdr -m elf_x86_64 -pie -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_478e4 /lib/x86_64-linux-gnu/Scrt1.o /lib/x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/12/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/12 -L/usr/lib/gcc/x86_64-linux-gnu/12/../../../../lib64 -L/lib/x86_64-linux-gnu -L/lib/../lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib64 -L/usr/lib/llvm-20/bin/../lib -L/lib -L/usr/lib -v CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/12/crtendS.o /lib/x86_64-linux-gnu/crtn.o
+        GNU ld (GNU Binutils for Ubuntu) 2.38
+        /usr/bin/clang++-20  -v -Wl,-v CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_478e4
+        gmake[1]: Leaving directory '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-cvGtRR'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake-4.0/Modules/CMakeDetermineCompilerABI.cmake:191 (message)"
+      - "/usr/local/share/cmake-4.0/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Parsed CXX implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12]
+          add: [/usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/x86_64-linux-gnu/c++/12]
+          add: [/usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/backward]
+          add: [/usr/lib/llvm-20/lib/clang/20/include]
+          add: [/usr/local/include]
+          add: [/usr/include/x86_64-linux-gnu]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12] ==> [/usr/include/c++/12]
+        collapse include dir [/usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/x86_64-linux-gnu/c++/12] ==> [/usr/include/x86_64-linux-gnu/c++/12]
+        collapse include dir [/usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/backward] ==> [/usr/include/c++/12/backward]
+        collapse include dir [/usr/lib/llvm-20/lib/clang/20/include] ==> [/usr/lib/llvm-20/lib/clang/20/include]
+        collapse include dir [/usr/local/include] ==> [/usr/local/include]
+        collapse include dir [/usr/include/x86_64-linux-gnu] ==> [/usr/include/x86_64-linux-gnu]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/include/c++/12;/usr/include/x86_64-linux-gnu/c++/12;/usr/include/c++/12/backward;/usr/lib/llvm-20/lib/clang/20/include;/usr/local/include;/usr/include/x86_64-linux-gnu;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake-4.0/Modules/CMakeDetermineCompilerABI.cmake:227 (message)"
+      - "/usr/local/share/cmake-4.0/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Parsed CXX implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)))("|,| |$)]
+        ignore line: [Change Dir: '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-cvGtRR']
+        ignore line: []
+        ignore line: [Run Build Command(s): /usr/local/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_478e4/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_478e4.dir/build.make CMakeFiles/cmTC_478e4.dir/build]
+        ignore line: [gmake[1]: Entering directory '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-cvGtRR']
+        ignore line: [Building CXX object CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o]
+        ignore line: [/usr/bin/clang++-20   -v -MD -MT CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o -MF CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o.d -o CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o -c /usr/local/share/cmake-4.0/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [Ubuntu clang version 20.1.8 (++20250708082409+6fb913d3e2ec-1~exp1~20250708202428.132)]
+        ignore line: [Target: x86_64-pc-linux-gnu]
+        ignore line: [Thread model: posix]
+        ignore line: [InstalledDir: /usr/lib/llvm-20/bin]
+        ignore line: [Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/11]
+        ignore line: [Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/12]
+        ignore line: [Selected GCC installation: /usr/lib/gcc/x86_64-linux-gnu/12]
+        ignore line: [Candidate multilib: .]
+        ignore line: [@m64]
+        ignore line: [Selected multilib: .]
+        ignore line: [@m64]
+        ignore line: [ (in-process)]
+        ignore line: [ "/usr/lib/llvm-20/bin/clang" -cc1 -triple x86_64-pc-linux-gnu -emit-obj -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=all -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-cvGtRR -v -fcoverage-compilation-dir=/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-cvGtRR -resource-dir /usr/lib/llvm-20/lib/clang/20 -dependency-file CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/x86_64-linux-gnu/c++/12 -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/backward -internal-isystem /usr/lib/llvm-20/lib/clang/20/include -internal-isystem /usr/local/include -internal-isystem /usr/lib/gcc/x86_64-linux-gnu/12/../../../../x86_64-linux-gnu/include -internal-externc-isystem /usr/include/x86_64-linux-gnu -internal-externc-isystem /include -internal-externc-isystem /usr/include -fdeprecated-macro -ferror-limit 19 -fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fcxx-exceptions -fexceptions -faddrsig -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o -x c++ /usr/local/share/cmake-4.0/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [clang -cc1 version 20.1.8 based upon LLVM 20.1.8 default target x86_64-pc-linux-gnu]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/12/../../../../x86_64-linux-gnu/include"]
+        ignore line: [ignoring nonexistent directory "/include"]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12]
+        ignore line: [ /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/x86_64-linux-gnu/c++/12]
+        ignore line: [ /usr/lib/gcc/x86_64-linux-gnu/12/../../../../include/c++/12/backward]
+        ignore line: [ /usr/lib/llvm-20/lib/clang/20/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/include/x86_64-linux-gnu]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Linking CXX executable cmTC_478e4]
+        ignore line: [/usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_478e4.dir/link.txt --verbose=1]
+        ignore line: [Ubuntu clang version 20.1.8 (++20250708082409+6fb913d3e2ec-1~exp1~20250708202428.132)]
+        ignore line: [Target: x86_64-pc-linux-gnu]
+        ignore line: [Thread model: posix]
+        ignore line: [InstalledDir: /usr/lib/llvm-20/bin]
+        ignore line: [Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/11]
+        ignore line: [Found candidate GCC installation: /usr/lib/gcc/x86_64-linux-gnu/12]
+        ignore line: [Selected GCC installation: /usr/lib/gcc/x86_64-linux-gnu/12]
+        ignore line: [Candidate multilib: .]
+        ignore line: [@m64]
+        ignore line: [Selected multilib: .]
+        ignore line: [@m64]
+        link line: [ "/usr/bin/ld" -z relro --hash-style=gnu --build-id --eh-frame-hdr -m elf_x86_64 -pie -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o cmTC_478e4 /lib/x86_64-linux-gnu/Scrt1.o /lib/x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/12/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/12 -L/usr/lib/gcc/x86_64-linux-gnu/12/../../../../lib64 -L/lib/x86_64-linux-gnu -L/lib/../lib64 -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib64 -L/usr/lib/llvm-20/bin/../lib -L/lib -L/usr/lib -v CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/12/crtendS.o /lib/x86_64-linux-gnu/crtn.o]
+          arg [/usr/bin/ld] ==> ignore
+          arg [-zrelro] ==> ignore
+          arg [--hash-style=gnu] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [-pie] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_478e4] ==> ignore
+          arg [/lib/x86_64-linux-gnu/Scrt1.o] ==> obj [/lib/x86_64-linux-gnu/Scrt1.o]
+          arg [/lib/x86_64-linux-gnu/crti.o] ==> obj [/lib/x86_64-linux-gnu/crti.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/12/crtbeginS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/12/crtbeginS.o]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/12] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/12]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/12/../../../../lib64] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/12/../../../../lib64]
+          arg [-L/lib/x86_64-linux-gnu] ==> dir [/lib/x86_64-linux-gnu]
+          arg [-L/lib/../lib64] ==> dir [/lib/../lib64]
+          arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
+          arg [-L/usr/lib/../lib64] ==> dir [/usr/lib/../lib64]
+          arg [-L/usr/lib/llvm-20/bin/../lib] ==> dir [/usr/lib/llvm-20/bin/../lib]
+          arg [-L/lib] ==> dir [/lib]
+          arg [-L/usr/lib] ==> dir [/usr/lib]
+          arg [-v] ==> ignore
+          arg [CMakeFiles/cmTC_478e4.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+          arg [-lstdc++] ==> lib [stdc++]
+          arg [-lm] ==> lib [m]
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [-lgcc] ==> lib [gcc]
+          arg [-lc] ==> lib [c]
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [-lgcc] ==> lib [gcc]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/12/crtendS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/12/crtendS.o]
+          arg [/lib/x86_64-linux-gnu/crtn.o] ==> obj [/lib/x86_64-linux-gnu/crtn.o]
+        linker tool for 'CXX': /usr/bin/ld
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/12] ==> [/usr/lib/gcc/x86_64-linux-gnu/12]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/12/../../../../lib64] ==> [/usr/lib64]
+        collapse library dir [/lib/x86_64-linux-gnu] ==> [/lib/x86_64-linux-gnu]
+        collapse library dir [/lib/../lib64] ==> [/lib64]
+        collapse library dir [/usr/lib/x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/../lib64] ==> [/usr/lib64]
+        collapse library dir [/usr/lib/llvm-20/bin/../lib] ==> [/usr/lib/llvm-20/lib]
+        collapse library dir [/lib] ==> [/lib]
+        collapse library dir [/usr/lib] ==> [/usr/lib]
+        implicit libs: [stdc++;m;gcc_s;gcc;c;gcc_s;gcc]
+        implicit objs: [/lib/x86_64-linux-gnu/Scrt1.o;/lib/x86_64-linux-gnu/crti.o;/usr/lib/gcc/x86_64-linux-gnu/12/crtbeginS.o;/usr/lib/gcc/x86_64-linux-gnu/12/crtendS.o;/lib/x86_64-linux-gnu/crtn.o]
+        implicit dirs: [/usr/lib/gcc/x86_64-linux-gnu/12;/usr/lib64;/lib/x86_64-linux-gnu;/lib64;/usr/lib/x86_64-linux-gnu;/usr/lib/llvm-20/lib;/lib;/usr/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/usr/local/share/cmake-4.0/Modules/Internal/CMakeDetermineLinkerId.cmake:36 (message)"
+      - "/usr/local/share/cmake-4.0/Modules/CMakeDetermineCompilerABI.cmake:270 (cmake_determine_linker_id)"
+      - "/usr/local/share/cmake-4.0/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Running the CXX compiler's linker: "/usr/bin/ld" "-v"
+      GNU ld (GNU Binutils for Ubuntu) 2.38
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-4.0/Modules/Internal/CheckSourceCompiles.cmake:104 (try_compile)"
+      - "/usr/local/share/cmake-4.0/Modules/CheckCXXSourceCompiles.cmake:58 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-4.0/Modules/FindThreads.cmake:99 (check_cxx_source_compiles)"
+      - "/usr/local/share/cmake-4.0/Modules/FindThreads.cmake:163 (_threads_check_libc)"
+      - "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/cmake/spdlog/spdlogConfig.cmake:30 (find_package)"
+      - "/usr/local/share/cmake-4.0/Modules/CMakeFindDependencyMacro.cmake:78 (find_package)"
+      - "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/cmake/tt-metalium/tt-metalium-config.cmake:33 (find_dependency)"
+      - "CMakeLists.txt:65 (find_package)"
+    checks:
+      - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
+    directories:
+      source: "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-7kqsYw"
+      binary: "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-7kqsYw"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "/usr/bin/clang-scan-deps-20"
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_HAVE_LIBC_PTHREAD"
+      cached: true
+      stdout: |
+        Change Dir: '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-7kqsYw'
+        
+        Run Build Command(s): /usr/local/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_4ef12/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_4ef12.dir/build.make CMakeFiles/cmTC_4ef12.dir/build
+        gmake[1]: Entering directory '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-7kqsYw'
+        Building CXX object CMakeFiles/cmTC_4ef12.dir/src.cxx.o
+        /usr/bin/clang++-20 -DCMAKE_HAVE_LIBC_PTHREAD  -std=gnu++20 -MD -MT CMakeFiles/cmTC_4ef12.dir/src.cxx.o -MF CMakeFiles/cmTC_4ef12.dir/src.cxx.o.d -o CMakeFiles/cmTC_4ef12.dir/src.cxx.o -c /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-7kqsYw/src.cxx
+        Linking CXX executable cmTC_4ef12
+        /usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4ef12.dir/link.txt --verbose=1
+        /usr/bin/clang++-20 CMakeFiles/cmTC_4ef12.dir/src.cxx.o -o cmTC_4ef12
+        gmake[1]: Leaving directory '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-7kqsYw'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-4.0/Modules/Internal/CheckSourceCompiles.cmake:104 (try_compile)"
+      - "/usr/local/share/cmake-4.0/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-4.0/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/DREAMPlace/dp_env/lib/python3.8/site-packages/pybind11/share/cmake/pybind11/pybind11Common.cmake:332 (check_cxx_compiler_flag)"
+      - "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/DREAMPlace/dp_env/lib/python3.8/site-packages/pybind11/share/cmake/pybind11/pybind11Common.cmake:372 (_pybind11_return_if_cxx_and_linker_flags_work)"
+      - "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/DREAMPlace/dp_env/lib/python3.8/site-packages/pybind11/share/cmake/pybind11/pybind11Common.cmake:438 (_pybind11_generate_lto)"
+      - "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/DREAMPlace/dp_env/lib/python3.8/site-packages/pybind11/share/cmake/pybind11/pybind11Config.cmake:257 (include)"
+      - "CMakeLists.txt:126 (find_package)"
+    checks:
+      - "Performing Test HAS_FLTO_THIN"
+    directories:
+      source: "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-9tR1nQ"
+      binary: "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-9tR1nQ"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "/usr/bin/clang-scan-deps-20"
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAS_FLTO_THIN"
+      cached: true
+      stdout: |
+        Change Dir: '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-9tR1nQ'
+        
+        Run Build Command(s): /usr/local/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_604f6/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_604f6.dir/build.make CMakeFiles/cmTC_604f6.dir/build
+        gmake[1]: Entering directory '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-9tR1nQ'
+        Building CXX object CMakeFiles/cmTC_604f6.dir/src.cxx.o
+        /usr/bin/clang++-20 -DHAS_FLTO_THIN  -std=gnu++20   -flto -MD -MT CMakeFiles/cmTC_604f6.dir/src.cxx.o -MF CMakeFiles/cmTC_604f6.dir/src.cxx.o.d -o CMakeFiles/cmTC_604f6.dir/src.cxx.o -c /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-9tR1nQ/src.cxx
+        Linking CXX executable cmTC_604f6
+        /usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_604f6.dir/link.txt --verbose=1
+        /usr/bin/clang++-20 CMakeFiles/cmTC_604f6.dir/src.cxx.o -o cmTC_604f6  -flto
+        gmake[1]: Leaving directory '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-9tR1nQ'
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/usr/local/share/cmake-4.0/Modules/Internal/CheckSourceCompiles.cmake:104 (try_compile)"
+      - "/usr/local/share/cmake-4.0/Modules/Internal/CheckCompilerFlag.cmake:18 (cmake_check_source_compiles)"
+      - "/usr/local/share/cmake-4.0/Modules/CheckCXXCompilerFlag.cmake:55 (cmake_check_compiler_flag)"
+      - "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/DREAMPlace/dp_env/lib/python3.8/site-packages/pybind11/share/cmake/pybind11/pybind11Common.cmake:332 (check_cxx_compiler_flag)"
+      - "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/DREAMPlace/dp_env/lib/python3.8/site-packages/pybind11/share/cmake/pybind11/pybind11Common.cmake:382 (_pybind11_return_if_cxx_and_linker_flags_work)"
+      - "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/DREAMPlace/dp_env/lib/python3.8/site-packages/pybind11/share/cmake/pybind11/pybind11Common.cmake:438 (_pybind11_generate_lto)"
+      - "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/DREAMPlace/dp_env/lib/python3.8/site-packages/pybind11/share/cmake/pybind11/pybind11Config.cmake:257 (include)"
+      - "CMakeLists.txt:126 (find_package)"
+    checks:
+      - "Performing Test HAS_FLTO"
+    directories:
+      source: "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-drwEUN"
+      binary: "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-drwEUN"
+    cmakeVariables:
+      CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS: "/usr/bin/clang-scan-deps-20"
+      CMAKE_CXX_FLAGS: ""
+      CMAKE_CXX_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "HAS_FLTO"
+      cached: true
+      stdout: |
+        Change Dir: '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-drwEUN'
+        
+        Run Build Command(s): /usr/local/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_ab95c/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_ab95c.dir/build.make CMakeFiles/cmTC_ab95c.dir/build
+        gmake[1]: Entering directory '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-drwEUN'
+        Building CXX object CMakeFiles/cmTC_ab95c.dir/src.cxx.o
+        /usr/bin/clang++-20 -DHAS_FLTO  -std=gnu++20   -flto -MD -MT CMakeFiles/cmTC_ab95c.dir/src.cxx.o -MF CMakeFiles/cmTC_ab95c.dir/src.cxx.o.d -o CMakeFiles/cmTC_ab95c.dir/src.cxx.o -c /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-drwEUN/src.cxx
+        Linking CXX executable cmTC_ab95c
+        /usr/local/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ab95c.dir/link.txt --verbose=1
+        /usr/bin/clang++-20 CMakeFiles/cmTC_ab95c.dir/src.cxx.o -o cmTC_ab95c  -flto
+        gmake[1]: Leaving directory '/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/CMakeScratch/TryCompile-drwEUN'
+        
+      exitCode: 0
+...

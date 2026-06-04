@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

@@ -1,0 +1,17 @@
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v25_ef_l1gather.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v26.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v27.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v28.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v35.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v35live.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v29.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v30.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/fccs.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v32_regroup.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v31_backward.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/atomic_bench_host.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/mcast_bw.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v11op_bench_host.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/v19_microbench_host.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/edit_cache.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/harness/build/CMakeFiles/rebuild_cache.dir

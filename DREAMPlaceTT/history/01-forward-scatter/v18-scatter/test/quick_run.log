@@ -1,0 +1,606 @@
+================ adaptec1 grid 512 ================
+[v18-test] building engine grid=512 design=adaptec1 NC_max=211447 ...
+2026-06-03 02:32:25.051 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:32:25.053 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:25.054 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:32:25.054 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:32:25.057 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:25.061 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:32:25.061 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:32:25.063 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:25.064 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:32:25.064 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:32:25.066 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:25.069 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:32:25.069 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:32:25.069 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:32:25.142 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:32:25.142 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:32:25.142 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:32:25.143 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:32:25.155 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=512 N=512 NC_max=211447
+[v19_engine] gather_mode=v18-hashagg
+2026-06-03 02:32:25.371 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:32:25.371 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:32:25.371 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:32:25.373 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:25.374 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:32:25.374 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:32:25.376 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:25.380 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:32:25.380 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:32:25.380 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:32:25.380 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:25.380 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:25.380 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:32:25.380 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:25.380 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:25.380 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:32:25.380 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:32:25.380 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:32:25.380 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:32:25.380 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:32:25.380 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:32:25.391 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:32:26.128 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349923 GHz, device_time_at_sync=1135494248732 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 388 KB (limit 1536 KB)
+[server] V18: hash_bits=16 slots=65536 slot_bytes=6 table_per_risc=384 KB dirty_per_risc=128 KB total_per_core=1024 KB bf16_area=1 no_dirty=0
+[server] V11: 256 tiles (16x16), 110 cores, max_owned=3
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=55 KB
+[server] V11 hist_pgsz=1024, hist_total=110 KB
+[server] V11 shard_table_pgsz=4096 (256 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 1140 KB (shared_off=586176, brisc_off=586304)
+[server] V18: hash_n_off=61888 dirty_n_off=455104 hash_b_off=643584 dirty_b_off=1036800 table_per=384 KB dirty_per=128 KB
+[server] V11 accum scratch (initial) = 682 KB (max_owned=3, dense_off=539008)
+[server] V11 hist scratch = 1 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+2026-06-03 02:32:26.278 | error    |    BuildKernels | brisc compile failure -- cmd: cd /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_b_dm/645594328384741658/brisc/ && /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/runtime/sfpi/compiler/bin/riscv-tt-elf-g++ -O2 -std=c++17 -ftt-nttp -ftt-constinit -ftt-consteval -flto=auto -ffast-math -fno-exceptions -g -MMD -fno-use-cxa-atexit -Wall -Werror -Wno-deprecated-declarations -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -Wno-unused-function -mcpu=tt-bh -fno-tree-loop-distribute-patterns -I. -I.. -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn/cpp -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hostdevcommon/api -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/api/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/llk_io -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/blackhole_defines -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/noc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/common/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/llk_lib -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels -c -o /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_b_dm/645594328384741658/brisc/brisck.1957904368562755491.o /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/brisck.cc -MF /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_b_dm/645594328384741658/brisc/brisck.1957904368562755491.d -DIS_NOT_POW2_NUM_L1_BANKS=1 -DLOG_BASE_2_OF_NUM_DRAM_BANKS=3 -DNUM_DRAM_BANKS=8 -DNUM_L1_BANKS=110 -DPCIE_NOC_X=19 -DPCIE_NOC_Y=24 -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DPROCESSOR_INDEX=0 -DCOMPILE_FOR_BRISC -DARCH_BLACKHOLE -DDISPATCH_MESSAGE_ADDR=4290184248 -DKERNEL_BUILD -DNOC_INDEX='0' -DNOC_MODE='0'  (build.cpp:58)
+2026-06-03 02:32:26.278 | critical |          Always | TT_THROW: brisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/brisck.cc:21:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+ (assert.hpp:104)
+2026-06-03 02:32:26.278 | error    |    BuildKernels | ncrisc compile failure -- cmd: cd /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_dm/1555722552921189436/ncrisc/ && /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/runtime/sfpi/compiler/bin/riscv-tt-elf-g++ -O2 -std=c++17 -ftt-nttp -ftt-constinit -ftt-consteval -flto=auto -ffast-math -fno-exceptions -g -MMD -fno-use-cxa-atexit -Wall -Werror -Wno-deprecated-declarations -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -Wno-unused-function -mcpu=tt-bh -fno-tree-loop-distribute-patterns -I. -I.. -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn/cpp -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hostdevcommon/api -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/api/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/llk_io -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/blackhole_defines -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/noc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/common/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/llk_lib -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels -c -o /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_dm/1555722552921189436/ncrisc/ncrisck.1957904368562755491.o /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc -MF /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_dm/1555722552921189436/ncrisc/ncrisck.1957904368562755491.d -DIS_NOT_POW2_NUM_L1_BANKS=1 -DLOG_BASE_2_OF_NUM_DRAM_BANKS=3 -DNUM_DRAM_BANKS=8 -DNUM_L1_BANKS=110 -DPCIE_NOC_X=19 -DPCIE_NOC_Y=24 -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DPROCESSOR_INDEX=1 -DCOMPILE_FOR_NCRISC -DARCH_BLACKHOLE -DDISPATCH_MESSAGE_ADDR=4290184248 -DKERNEL_BUILD -DNOC_INDEX='1' -DNOC_MODE='0'  (build.cpp:58)
+2026-06-03 02:32:26.279 | critical |          Always | TT_THROW: ncrisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+ (assert.hpp:104)
+2026-06-03 02:32:26.281 | critical |          Always | TT_THROW: Failed to generate binaries for v18_scatter_b_dm TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/jit_build/build.cpp:62: tt::exception
+info:
+brisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/brisck.cc:21:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6cc3b8) [0x7f9593ad83b8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x9ee18c) [0x7f9593dfa18c]
+ --- tt::tt_metal::JitBuildState::compile_one(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, tt::tt_metal::JitBuildSettings const*, unsigned long) const
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7f9593e153a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7f9593e1532e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7f9593ae0c8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7f9635b84ee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7f9593ae0ae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7f9593e1517e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7f9593c77c75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7f9593c76780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7f9593c75c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7f95913e8253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7f9635b7fac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7f9635c118d0]
+ (assert.hpp:104)
+2026-06-03 02:32:26.282 | critical |          Always | TT_THROW: Failed to generate binaries for v18_scatter_dm TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/jit_build/build.cpp:62: tt::exception
+info:
+ncrisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6cc3b8) [0x7f9593ad83b8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x9ee18c) [0x7f9593dfa18c]
+ --- tt::tt_metal::JitBuildState::compile_one(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, tt::tt_metal::JitBuildSettings const*, unsigned long) const
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7f9593e153a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7f9593e1532e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7f9593ae0c8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7f9635b84ee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7f9593ae0ae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7f9593e1517e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7f9593c77c75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7f9593c76780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7f9593c75c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7f95913e8253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7f9635b7fac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7f9635c118d0]
+ (assert.hpp:104)
+Traceback (most recent call last):
+  File "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v18-scatter/test/v18_scatter_test.py", line 115, in <module>
+    rows = run(a.grid, a.design)
+  File "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v18-scatter/test/v18_scatter_test.py", line 37, in run
+    eng = v19_engine.V19Engine(grid, grid, nc, 0.0, 0.0, float(grid), float(grid), "v18")
+RuntimeError: TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/impl/program/program.cpp:249: tt::exception
+info:
+Failed to generate binaries for v18_scatter_dm TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/jit_build/build.cpp:62: tt::exception
+info:
+ncrisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6cc3b8) [0x7f9593ad83b8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x9ee18c) [0x7f9593dfa18c]
+ --- tt::tt_metal::JitBuildState::compile_one(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, tt::tt_metal::JitBuildSettings const*, unsigned long) const
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7f9593e153a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7f9593e1532e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7f9593ae0c8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7f9635b84ee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7f9593ae0ae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7f9593e1517e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7f9593c77c75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7f9593c76780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7f9593c75c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7f95913e8253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7f9635b7fac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7f9635c118d0]
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x87f0d8) [0x7f9593c8b0d8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x852aeb) [0x7f9593c5eaeb]
+ --- tt::tt_metal::JitBuildCache::build_once(unsigned long, std::function<void ()> const&)
+ --- tt::tt_metal::jit_build_once(unsigned long, std::function<void ()> const&)
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x852642) [0x7f9593c5e642]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7f9593e153a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7f9593e1532e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7f9593ae0c8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7f9635b84ee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7f9593ae0ae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7f9593e1517e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7f9593c77c75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7f9593c76780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7f9593c75c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7f95913e8253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7f9635b7fac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7f9635c118d0]
+
+2026-06-03 02:32:26.427 | info     |    BuildKernels | JIT cache stats: 13/13 hits (100.0%) [13 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:32:26.427 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:32:26.427 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=26, total=32.726ms, min=0.031ms, max=4.793ms, mean=1.259ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:32:26.427 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=13, total=33.833ms, min=0.911ms, max=4.955ms, mean=2.603ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:32:26.427 | info     |    BuildKernels | JIT telemetry [jit_build]: count=7, total=14.975ms, min=0.911ms, max=3.798ms, mean=2.139ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:32:26.440 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:32:26.440 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+[run.sh] adaptec1 grid 512 FAILED
+================ adaptec1 grid 1024 ================
+[v18-test] building engine grid=1024 design=adaptec1 NC_max=211447 ...
+2026-06-03 02:32:26.998 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:32:27.001 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:27.002 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:32:27.002 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:32:27.004 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:27.009 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:32:27.009 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:32:27.011 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:27.012 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:32:27.012 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:32:27.015 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:27.017 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:32:27.017 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:32:27.017 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:32:27.089 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:32:27.089 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:32:27.089 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:32:27.091 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:32:27.102 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=1024 N=1024 NC_max=211447
+[v19_engine] gather_mode=v18-hashagg
+2026-06-03 02:32:27.359 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:32:27.359 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:32:27.359 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:32:27.360 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:27.361 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:32:27.361 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:32:27.364 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:27.368 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:32:27.368 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:32:27.368 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:32:27.368 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:27.368 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:27.368 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:32:27.368 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:27.368 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:27.368 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:32:27.368 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:32:27.368 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:32:27.368 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:32:27.368 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:32:27.368 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:32:27.379 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:32:28.113 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349891 GHz, device_time_at_sync=1137450904591 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 391 KB (limit 1536 KB)
+[server] V18: hash_bits=16 slots=65536 slot_bytes=6 table_per_risc=384 KB dirty_per_risc=128 KB total_per_core=1024 KB bf16_area=1 no_dirty=0
+[server] V11: 1024 tiles (32x32), 110 cores, max_owned=10
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=220 KB
+[server] V11 hist_pgsz=4096, hist_total=440 KB
+[server] V11 shard_table_pgsz=16384 (1024 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 1154 KB (shared_off=600000, brisc_off=600128)
+[server] V18: hash_n_off=75712 dirty_n_off=468928 hash_b_off=657408 dirty_b_off=1050624 table_per=384 KB dirty_per=128 KB
+[server] V11 accum scratch (initial) = 739 KB (max_owned=10, dense_off=540544)
+[server] V11 hist scratch = 4 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+2026-06-03 02:32:28.260 | error    |    BuildKernels | ncrisc compile failure -- cmd: cd /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_dm/1555722552921189436/ncrisc/ && /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/runtime/sfpi/compiler/bin/riscv-tt-elf-g++ -O2 -std=c++17 -ftt-nttp -ftt-constinit -ftt-consteval -flto=auto -ffast-math -fno-exceptions -g -MMD -fno-use-cxa-atexit -Wall -Werror -Wno-deprecated-declarations -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -Wno-unused-function -mcpu=tt-bh -fno-tree-loop-distribute-patterns -I. -I.. -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn/cpp -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hostdevcommon/api -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/api/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/llk_io -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/blackhole_defines -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/noc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/common/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/llk_lib -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels -c -o /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_dm/1555722552921189436/ncrisc/ncrisck.13714079961368943651.o /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc -MF /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_dm/1555722552921189436/ncrisc/ncrisck.13714079961368943651.d -DIS_NOT_POW2_NUM_L1_BANKS=1 -DLOG_BASE_2_OF_NUM_DRAM_BANKS=3 -DNUM_DRAM_BANKS=8 -DNUM_L1_BANKS=110 -DPCIE_NOC_X=19 -DPCIE_NOC_Y=24 -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DPROCESSOR_INDEX=1 -DCOMPILE_FOR_NCRISC -DARCH_BLACKHOLE -DDISPATCH_MESSAGE_ADDR=4290184248 -DKERNEL_BUILD -DNOC_INDEX='1' -DNOC_MODE='0'  (build.cpp:58)
+2026-06-03 02:32:28.261 | critical |          Always | TT_THROW: ncrisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+ (assert.hpp:104)
+2026-06-03 02:32:28.261 | error    |    BuildKernels | brisc compile failure -- cmd: cd /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_b_dm/645594328384741658/brisc/ && /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/runtime/sfpi/compiler/bin/riscv-tt-elf-g++ -O2 -std=c++17 -ftt-nttp -ftt-constinit -ftt-consteval -flto=auto -ffast-math -fno-exceptions -g -MMD -fno-use-cxa-atexit -Wall -Werror -Wno-deprecated-declarations -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -Wno-unused-function -mcpu=tt-bh -fno-tree-loop-distribute-patterns -I. -I.. -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn/cpp -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hostdevcommon/api -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/api/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/llk_io -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/blackhole_defines -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/noc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/common/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/llk_lib -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels -c -o /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_b_dm/645594328384741658/brisc/brisck.13714079961368943651.o /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/brisck.cc -MF /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_b_dm/645594328384741658/brisc/brisck.13714079961368943651.d -DIS_NOT_POW2_NUM_L1_BANKS=1 -DLOG_BASE_2_OF_NUM_DRAM_BANKS=3 -DNUM_DRAM_BANKS=8 -DNUM_L1_BANKS=110 -DPCIE_NOC_X=19 -DPCIE_NOC_Y=24 -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DPROCESSOR_INDEX=0 -DCOMPILE_FOR_BRISC -DARCH_BLACKHOLE -DDISPATCH_MESSAGE_ADDR=4290184248 -DKERNEL_BUILD -DNOC_INDEX='0' -DNOC_MODE='0'  (build.cpp:58)
+2026-06-03 02:32:28.261 | critical |          Always | TT_THROW: brisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/brisck.cc:21:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+ (assert.hpp:104)
+2026-06-03 02:32:28.263 | critical |          Always | TT_THROW: Failed to generate binaries for v18_scatter_dm TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/jit_build/build.cpp:62: tt::exception
+info:
+ncrisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6cc3b8) [0x7f6014a5c3b8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x9ee18c) [0x7f6014d7e18c]
+ --- tt::tt_metal::JitBuildState::compile_one(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, tt::tt_metal::JitBuildSettings const*, unsigned long) const
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7f6014d993a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7f6014d9932e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7f6014a64c8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7f60b6b0aee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7f6014a64ae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7f6014d9917e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7f6014bfbc75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7f6014bfa780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7f6014bf9c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7f601236c253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7f60b6b05ac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7f60b6b978d0]
+ (assert.hpp:104)
+2026-06-03 02:32:28.265 | critical |          Always | TT_THROW: Failed to generate binaries for v18_scatter_b_dm TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/jit_build/build.cpp:62: tt::exception
+info:
+brisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/brisck.cc:21:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6cc3b8) [0x7f6014a5c3b8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x9ee18c) [0x7f6014d7e18c]
+ --- tt::tt_metal::JitBuildState::compile_one(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, tt::tt_metal::JitBuildSettings const*, unsigned long) const
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7f6014d993a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7f6014d9932e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7f6014a64c8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7f60b6b0aee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7f6014a64ae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7f6014d9917e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7f6014bfbc75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7f6014bfa780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7f6014bf9c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7f601236c253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7f60b6b05ac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7f60b6b978d0]
+ (assert.hpp:104)
+Traceback (most recent call last):
+  File "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v18-scatter/test/v18_scatter_test.py", line 115, in <module>
+    rows = run(a.grid, a.design)
+  File "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v18-scatter/test/v18_scatter_test.py", line 37, in run
+    eng = v19_engine.V19Engine(grid, grid, nc, 0.0, 0.0, float(grid), float(grid), "v18")
+RuntimeError: TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/impl/program/program.cpp:249: tt::exception
+info:
+Failed to generate binaries for v18_scatter_dm TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/jit_build/build.cpp:62: tt::exception
+info:
+ncrisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6cc3b8) [0x7f6014a5c3b8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x9ee18c) [0x7f6014d7e18c]
+ --- tt::tt_metal::JitBuildState::compile_one(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, tt::tt_metal::JitBuildSettings const*, unsigned long) const
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7f6014d993a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7f6014d9932e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7f6014a64c8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7f60b6b0aee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7f6014a64ae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7f6014d9917e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7f6014bfbc75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7f6014bfa780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7f6014bf9c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7f601236c253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7f60b6b05ac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7f60b6b978d0]
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x87f0d8) [0x7f6014c0f0d8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x852aeb) [0x7f6014be2aeb]
+ --- tt::tt_metal::JitBuildCache::build_once(unsigned long, std::function<void ()> const&)
+ --- tt::tt_metal::jit_build_once(unsigned long, std::function<void ()> const&)
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x852642) [0x7f6014be2642]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7f6014d993a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7f6014d9932e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7f6014a64c8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7f60b6b0aee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7f6014a64ae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7f6014d9917e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7f6014bfbc75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7f6014bfa780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7f6014bf9c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7f601236c253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7f60b6b05ac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7f60b6b978d0]
+
+2026-06-03 02:32:28.403 | info     |    BuildKernels | JIT cache stats: 13/13 hits (100.0%) [13 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:32:28.403 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:32:28.403 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=26, total=30.107ms, min=0.029ms, max=4.688ms, mean=1.158ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:32:28.403 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=13, total=31.160ms, min=0.917ms, max=4.884ms, mean=2.397ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:32:28.403 | info     |    BuildKernels | JIT telemetry [jit_build]: count=7, total=14.122ms, min=0.917ms, max=3.470ms, mean=2.017ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:32:28.416 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:32:28.416 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+[run.sh] adaptec1 grid 1024 FAILED
+================ adaptec1 grid 2048 ================
+[v18-test] building engine grid=2048 design=adaptec1 NC_max=211447 ...
+2026-06-03 02:32:29.054 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:32:29.057 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:29.058 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:32:29.058 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:32:29.060 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:29.065 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:32:29.065 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:32:29.068 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:29.068 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:32:29.068 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:32:29.071 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:29.073 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:32:29.073 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:32:29.073 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:32:29.145 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:32:29.146 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:32:29.146 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:32:29.147 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:32:29.158 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=2048 N=2048 NC_max=211447
+[v19_engine] gather_mode=v18-hashagg
+2026-06-03 02:32:29.463 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:32:29.463 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:32:29.463 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:32:29.464 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:29.465 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:32:29.465 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:32:29.468 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:32:29.472 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:32:29.472 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:32:29.472 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:32:29.472 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:29.472 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:29.472 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:32:29.472 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:29.472 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:32:29.472 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:32:29.472 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:32:29.472 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:32:29.472 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:32:29.472 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:32:29.472 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:32:29.483 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:32:30.215 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349849 GHz, device_time_at_sync=1139479229167 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 397 KB (limit 1536 KB)
+[server] V18: hash_bits=16 slots=65536 slot_bytes=6 table_per_risc=384 KB dirty_per_risc=128 KB total_per_core=1024 KB bf16_area=1 no_dirty=0
+[server] V11: 4096 tiles (64x64), 110 cores, max_owned=38
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=880 KB
+[server] V11 hist_pgsz=16384, hist_total=1760 KB
+[server] V11 shard_table_pgsz=65536 (4096 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 1208 KB (shared_off=655296, brisc_off=655424)
+[server] V18: hash_n_off=131008 dirty_n_off=524224 hash_b_off=712704 dirty_b_off=1105920 table_per=384 KB dirty_per=128 KB
+[server] V11 accum scratch (initial) = 969 KB (max_owned=38, dense_off=546688)
+[server] V11 hist scratch = 16 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+2026-06-03 02:32:30.364 | error    |    BuildKernels | ncrisc compile failure -- cmd: cd /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_dm/1555722552921189436/ncrisc/ && /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/runtime/sfpi/compiler/bin/riscv-tt-elf-g++ -O2 -std=c++17 -ftt-nttp -ftt-constinit -ftt-consteval -flto=auto -ffast-math -fno-exceptions -g -MMD -fno-use-cxa-atexit -Wall -Werror -Wno-deprecated-declarations -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -Wno-unused-function -mcpu=tt-bh -fno-tree-loop-distribute-patterns -I. -I.. -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn/cpp -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hostdevcommon/api -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/api/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/llk_io -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/blackhole_defines -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/noc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/common/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/llk_lib -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels -c -o /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_dm/1555722552921189436/ncrisc/ncrisck.12465066683228171166.o /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc -MF /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_dm/1555722552921189436/ncrisc/ncrisck.12465066683228171166.d -DIS_NOT_POW2_NUM_L1_BANKS=1 -DLOG_BASE_2_OF_NUM_DRAM_BANKS=3 -DNUM_DRAM_BANKS=8 -DNUM_L1_BANKS=110 -DPCIE_NOC_X=19 -DPCIE_NOC_Y=24 -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DPROCESSOR_INDEX=1 -DCOMPILE_FOR_NCRISC -DARCH_BLACKHOLE -DDISPATCH_MESSAGE_ADDR=4290184248 -DKERNEL_BUILD -DNOC_INDEX='1' -DNOC_MODE='0'  (build.cpp:58)
+2026-06-03 02:32:30.364 | critical |          Always | TT_THROW: ncrisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+ (assert.hpp:104)
+2026-06-03 02:32:30.366 | critical |          Always | TT_THROW: Failed to generate binaries for v18_scatter_dm TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/jit_build/build.cpp:62: tt::exception
+info:
+ncrisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6cc3b8) [0x7fbe44c153b8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x9ee18c) [0x7fbe44f3718c]
+ --- tt::tt_metal::JitBuildState::compile_one(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, tt::tt_metal::JitBuildSettings const*, unsigned long) const
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7fbe44f523a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7fbe44f5232e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7fbe44c1dc8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7fbee6cc9ee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7fbe44c1dae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7fbe44f5217e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7fbe44db4c75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7fbe44db3780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7fbe44db2c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7fbe4252e253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7fbee6cc4ac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7fbee6d568d0]
+ (assert.hpp:104)
+2026-06-03 02:32:30.367 | error    |    BuildKernels | brisc compile failure -- cmd: cd /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_b_dm/645594328384741658/brisc/ && /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/runtime/sfpi/compiler/bin/riscv-tt-elf-g++ -O2 -std=c++17 -ftt-nttp -ftt-constinit -ftt-consteval -flto=auto -ffast-math -fno-exceptions -g -MMD -fno-use-cxa-atexit -Wall -Werror -Wno-deprecated-declarations -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -Wno-unused-function -mcpu=tt-bh -fno-tree-loop-distribute-patterns -I. -I.. -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/ttnn/cpp -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hostdevcommon/api -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/api/ -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/common -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/ckernels/blackhole/metal/llk_io -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/blackhole_defines -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/inc/internal/tt-1xx/blackhole/noc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/common/inc -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/tt-llk/tt_llk_blackhole/llk_lib -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx -I/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels -c -o /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_b_dm/645594328384741658/brisc/brisck.12465066683228171166.o /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/brisck.cc -MF /root/.cache/tt-metal-cache/2010209910287226822/kernels/v18_scatter_b_dm/645594328384741658/brisc/brisck.12465066683228171166.d -DIS_NOT_POW2_NUM_L1_BANKS=1 -DLOG_BASE_2_OF_NUM_DRAM_BANKS=3 -DNUM_DRAM_BANKS=8 -DNUM_L1_BANKS=110 -DPCIE_NOC_X=19 -DPCIE_NOC_Y=24 -DTENSIX_FIRMWARE -DLOCAL_MEM_EN=0 -DPROCESSOR_INDEX=0 -DCOMPILE_FOR_BRISC -DARCH_BLACKHOLE -DDISPATCH_MESSAGE_ADDR=4290184248 -DKERNEL_BUILD -DNOC_INDEX='0' -DNOC_MODE='0'  (build.cpp:58)
+2026-06-03 02:32:30.367 | critical |          Always | TT_THROW: brisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/brisck.cc:21:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+ (assert.hpp:104)
+2026-06-03 02:32:30.371 | critical |          Always | TT_THROW: Failed to generate binaries for v18_scatter_b_dm TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/jit_build/build.cpp:62: tt::exception
+info:
+brisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/brisck.cc:21:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_b_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6cc3b8) [0x7fbe44c153b8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x9ee18c) [0x7fbe44f3718c]
+ --- tt::tt_metal::JitBuildState::compile_one(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, tt::tt_metal::JitBuildSettings const*, unsigned long) const
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7fbe44f523a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7fbe44f5232e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7fbe44c1dc8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7fbee6cc9ee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7fbe44c1dae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7fbe44f5217e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7fbe44db4c75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7fbe44db3780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7fbe44db2c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7fbe4252e253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7fbee6cc4ac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7fbee6d568d0]
+ (assert.hpp:104)
+Traceback (most recent call last):
+  File "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v18-scatter/test/v18_scatter_test.py", line 115, in <module>
+    rows = run(a.grid, a.design)
+  File "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v18-scatter/test/v18_scatter_test.py", line 37, in run
+    eng = v19_engine.V19Engine(grid, grid, nc, 0.0, 0.0, float(grid), float(grid), "v18")
+RuntimeError: TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/impl/program/program.cpp:249: tt::exception
+info:
+Failed to generate binaries for v18_scatter_dm TT_THROW @ /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/tt-metal/tt_metal/jit_build/build.cpp:62: tt::exception
+info:
+ncrisc build failed. Log: In file included from /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/hw/firmware/src/tt-1xx/ncrisck.cc:22:
+../kernel_includes.hpp:1:10: fatal error: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp: No such file or directory
+    1 | #include "/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/kernels/v18_scatter_dm.cpp"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6cc3b8) [0x7fbe44c153b8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x9ee18c) [0x7fbe44f3718c]
+ --- tt::tt_metal::JitBuildState::compile_one(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, tt::tt_metal::JitBuildSettings const*, unsigned long) const
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7fbe44f523a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7fbe44f5232e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7fbe44c1dc8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7fbee6cc9ee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7fbe44c1dae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7fbe44f5217e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7fbe44db4c75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7fbe44db3780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7fbe44db2c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7fbe4252e253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7fbee6cc4ac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7fbee6d568d0]
+
+backtrace:
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x87f0d8) [0x7fbe44dc80d8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x852aeb) [0x7fbe44d9baeb]
+ --- tt::tt_metal::JitBuildCache::build_once(unsigned long, std::function<void ()> const&)
+ --- tt::tt_metal::jit_build_once(unsigned long, std::function<void ()> const&)
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x852642) [0x7fbe44d9b642]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa093a8) [0x7fbe44f523a8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0932e) [0x7fbe44f5232e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4c8f) [0x7fbe44c1dc8f]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x99ee8) [0x7fbee6cc9ee8]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x6d4ae9) [0x7fbe44c1dae9]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0xa0917e) [0x7fbe44f5217e]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86bc75) [0x7fbe44db4c75]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x86a780) [0x7fbe44db3780]
+ --- /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/build_Release/lib/libtt_metal.so(+0x869c68) [0x7fbe44db2c68]
+ --- /lib/x86_64-linux-gnu/libstdc++.so.6(+0xdc253) [0x7fbe4252e253]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x94ac3) [0x7fbee6cc4ac3]
+ --- /lib/x86_64-linux-gnu/libc.so.6(+0x1268d0) [0x7fbee6d568d0]
+
+2026-06-03 02:32:30.504 | info     |    BuildKernels | JIT cache stats: 13/13 hits (100.0%) [13 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:32:30.504 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:32:30.504 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=26, total=35.819ms, min=0.033ms, max=4.966ms, mean=1.378ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:32:30.504 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=13, total=36.999ms, min=1.064ms, max=5.273ms, mean=2.846ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:32:30.504 | info     |    BuildKernels | JIT telemetry [jit_build]: count=7, total=17.415ms, min=1.065ms, max=4.707ms, mean=2.488ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:32:30.516 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:32:30.516 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+[run.sh] adaptec1 grid 2048 FAILED

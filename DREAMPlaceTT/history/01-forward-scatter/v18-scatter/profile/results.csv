@@ -1,0 +1,13 @@
+kernel,design,grid,dist,n_cells,rel_l2,pass,kernel_ms,ref_ms
+v18-scatter,adaptec1,512,clouds,211447,1.619e-03,1,1.6758,322.1579
+v18-scatter,adaptec1,512,cluster,211447,1.713e-03,1,1.6789,326.7780
+v18-scatter,adaptec1,512,uniform,211447,1.455e-03,1,1.6767,335.1254
+v18-scatter,adaptec1,1024,clouds,211447,1.475e-03,1,1.6963,346.1922
+v18-scatter,adaptec1,1024,cluster,211447,1.455e-03,1,1.6973,346.9310
+v18-scatter,adaptec1,1024,uniform,211447,1.557e-03,1,1.7132,356.6975
+v18-scatter,adaptec1,2048,clouds,211447,1.509e-03,1,1.8088,355.2483
+v18-scatter,adaptec1,2048,cluster,211447,1.476e-03,1,1.7953,354.7599
+v18-scatter,adaptec1,2048,uniform,211447,1.593e-03,1,1.8123,371.0612
+v18-scatter,adaptec2,512,clouds,255023,2.468e-03,1,2.2604,386.0587
+v18-scatter,adaptec2,512,cluster,255023,1.809e-03,1,2.2966,392.1973
+v18-scatter,adaptec2,512,uniform,255023,1.456e-03,1,2.3036,399.7682

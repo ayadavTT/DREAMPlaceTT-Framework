@@ -1,0 +1,4 @@
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/density_scatter_ttnn_server.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/v19_engine.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/edit_cache.dir
+/localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/host/build/CMakeFiles/rebuild_cache.dir

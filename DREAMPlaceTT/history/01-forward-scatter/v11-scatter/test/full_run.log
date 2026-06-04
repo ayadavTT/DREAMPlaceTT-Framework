@@ -1,0 +1,1749 @@
+================ adaptec1 grid 512 ================
+[v11-test] building engine grid=512 design=adaptec1 NC_max=211447 ...
+2026-06-03 02:37:07.534 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:07.536 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:07.537 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:07.537 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:07.540 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:07.544 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:07.544 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:07.547 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:07.548 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:07.548 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:07.550 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:07.552 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:07.553 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:07.553 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:07.625 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:07.625 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:07.625 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:07.626 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:07.637 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=512 N=512 NC_max=211447
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:07.883 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:07.883 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:07.883 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:07.884 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:07.885 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:07.885 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:07.888 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:07.892 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:07.892 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:07.892 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:07.892 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:07.892 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:07.892 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:07.892 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:07.892 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:07.892 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:07.892 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:07.892 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:07.892 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:07.892 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:07.892 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:07.903 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:08.651 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349823 GHz, device_time_at_sync=1255490245091 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 388 KB (limit 1536 KB)
+[server] V11: 256 tiles (16x16), 110 cores, max_owned=3
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=55 KB
+[server] V11 hist_pgsz=1024, hist_total=110 KB
+[server] V11 shard_table_pgsz=4096 (256 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 116 KB (shared_off=61888, brisc_off=62016)
+[server] V11 accum scratch (initial) = 682 KB (max_owned=3, dense_off=539008)
+[server] V11 hist scratch = 1 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 40.1 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 512x512 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 1.0 MB/buf)
+[v11-test] adaptec1  grid=  512 uniform  nc=  211447 rel_l2=3.82e-06 OK kernel=1.160ms
+[v11-test] adaptec1  grid=  512 cluster  nc=  211447 rel_l2=1.48e-06 OK kernel=1.165ms
+[v11-test] adaptec1  grid=  512 clouds   nc=  211447 rel_l2=2.01e-06 OK kernel=1.162ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (3/3 pass)
+2026-06-03 02:37:10.035 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:10.035 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:10.035 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=38.050ms, min=0.024ms, max=4.237ms, mean=0.865ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:10.035 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=39.768ms, min=0.800ms, max=4.424ms, mean=1.808ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:10.035 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=20.319ms, min=0.801ms, max=3.733ms, mean=1.563ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:10.047 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:10.047 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ adaptec1 grid 1024 ================
+[v11-test] building engine grid=1024 design=adaptec1 NC_max=211447 ...
+2026-06-03 02:37:10.654 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:10.657 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:10.658 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:10.658 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:10.660 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:10.664 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:10.664 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:10.667 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:10.668 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:10.668 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:10.670 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:10.673 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:10.673 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:10.673 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:10.746 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:10.746 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:10.746 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:10.748 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:10.759 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=1024 N=1024 NC_max=211447
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:10.992 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:10.992 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:10.992 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:10.993 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:10.994 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:10.994 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:10.997 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:11.001 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:11.001 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:11.001 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:11.001 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:11.001 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:11.001 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:11.001 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:11.001 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:11.001 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:11.001 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:11.001 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:11.001 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:11.001 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:11.001 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:11.011 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:11.756 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349819 GHz, device_time_at_sync=1258918320646 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 391 KB (limit 1536 KB)
+[server] V11: 1024 tiles (32x32), 110 cores, max_owned=10
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=220 KB
+[server] V11 hist_pgsz=4096, hist_total=440 KB
+[server] V11 shard_table_pgsz=16384 (1024 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 130 KB (shared_off=75712, brisc_off=75840)
+[server] V11 accum scratch (initial) = 739 KB (max_owned=10, dense_off=540544)
+[server] V11 hist scratch = 4 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 23.2 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 1024x1024 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 4.0 MB/buf)
+[v11-test] adaptec1  grid= 1024 uniform  nc=  211447 rel_l2=1.01e-05 OK kernel=1.185ms
+[v11-test] adaptec1  grid= 1024 cluster  nc=  211447 rel_l2=5.43e-06 OK kernel=1.171ms
+[v11-test] adaptec1  grid= 1024 clouds   nc=  211447 rel_l2=6.03e-06 OK kernel=1.157ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (6/6 pass)
+2026-06-03 02:37:13.256 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:13.256 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:13.256 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=41.065ms, min=0.023ms, max=4.554ms, mean=0.933ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:13.256 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=42.486ms, min=0.715ms, max=4.726ms, mean=1.931ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:13.256 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=20.359ms, min=0.715ms, max=4.004ms, mean=1.566ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:13.268 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:13.268 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ adaptec1 grid 2048 ================
+[v11-test] building engine grid=2048 design=adaptec1 NC_max=211447 ...
+2026-06-03 02:37:13.853 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:13.856 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:13.857 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:13.857 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:13.859 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:13.864 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:13.865 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:13.867 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:13.868 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:13.868 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:13.870 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:13.872 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:13.873 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:13.873 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:13.945 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:13.946 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:13.946 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:13.947 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:13.958 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=2048 N=2048 NC_max=211447
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:14.190 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:14.190 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:14.190 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:14.191 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:14.192 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:14.192 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:14.195 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:14.199 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:14.199 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:14.199 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:14.199 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:14.199 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:14.199 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:14.199 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:14.199 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:14.199 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:14.199 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:14.199 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:14.199 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:14.199 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:14.199 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:14.209 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:14.947 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349854 GHz, device_time_at_sync=1262474713005 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 397 KB (limit 1536 KB)
+[server] V11: 4096 tiles (64x64), 110 cores, max_owned=38
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=880 KB
+[server] V11 hist_pgsz=16384, hist_total=1760 KB
+[server] V11 shard_table_pgsz=65536 (4096 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 184 KB (shared_off=131008, brisc_off=131136)
+[server] V11 accum scratch (initial) = 969 KB (max_owned=38, dense_off=546688)
+[server] V11 hist scratch = 16 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 23.6 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 2048x2048 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 16.0 MB/buf)
+[v11-test] adaptec1  grid= 2048 uniform  nc=  211447 rel_l2=2.24e-05 OK kernel=1.264ms
+[v11-test] adaptec1  grid= 2048 cluster  nc=  211447 rel_l2=1.72e-05 OK kernel=1.266ms
+[v11-test] adaptec1  grid= 2048 clouds   nc=  211447 rel_l2=1.64e-05 OK kernel=1.256ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (9/9 pass)
+2026-06-03 02:37:17.227 | info     |    BuildKernels | JIT cache stats: 31/31 hits (100.0%) [31 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:17.227 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:17.227 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=62, total=77.429ms, min=0.026ms, max=4.466ms, mean=1.249ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:17.227 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=31, total=81.283ms, min=0.857ms, max=4.793ms, mean=2.622ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:17.227 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=24.241ms, min=0.857ms, max=3.655ms, mean=1.865ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:17.239 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:17.239 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ adaptec2 grid 512 ================
+[v11-test] building engine grid=512 design=adaptec2 NC_max=255023 ...
+2026-06-03 02:37:17.847 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:17.850 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:17.851 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:17.851 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:17.853 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:17.857 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:17.858 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:17.860 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:17.861 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:17.861 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:17.863 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:17.866 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:17.866 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:17.866 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:17.943 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:17.943 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:17.943 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:17.944 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:17.956 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=512 N=512 NC_max=255023
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:18.184 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:18.184 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:18.184 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:18.185 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:18.186 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:18.186 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:18.189 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:18.193 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:18.193 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:18.193 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:18.193 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:18.193 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:18.193 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:18.193 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:18.193 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:18.193 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:18.193 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:18.193 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:18.193 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:18.193 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:18.193 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:18.205 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:18.951 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349837 GHz, device_time_at_sync=1267107857224 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 580 KB (limit 1536 KB)
+[server] V11: 256 tiles (16x16), 110 cores, max_owned=3
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=55 KB
+[server] V11 hist_pgsz=1024, hist_total=110 KB
+[server] V11 shard_table_pgsz=4096 (256 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 116 KB (shared_off=61888, brisc_off=62016)
+[server] V11 accum scratch (initial) = 682 KB (max_owned=3, dense_off=539008)
+[server] V11 hist scratch = 1 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 22.9 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 512x512 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 1.0 MB/buf)
+[v11-test] adaptec2  grid=  512 uniform  nc=  255023 rel_l2=3.64e-06 OK kernel=1.622ms
+[v11-test] adaptec2  grid=  512 cluster  nc=  255023 rel_l2=1.35e-06 OK kernel=1.651ms
+[v11-test] adaptec2  grid=  512 clouds   nc=  255023 rel_l2=2.75e-06 OK kernel=1.610ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (12/12 pass)
+2026-06-03 02:37:20.516 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:20.516 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:20.516 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=53.981ms, min=0.028ms, max=16.684ms, mean=1.227ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:20.516 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=55.778ms, min=0.703ms, max=16.944ms, mean=2.535ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:20.516 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=21.116ms, min=0.703ms, max=3.976ms, mean=1.624ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:20.529 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:20.529 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ adaptec2 grid 1024 ================
+[v11-test] building engine grid=1024 design=adaptec2 NC_max=255023 ...
+2026-06-03 02:37:21.142 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:21.144 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:21.145 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:21.145 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:21.147 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:21.151 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:21.152 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:21.154 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:21.155 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:21.155 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:21.157 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:21.160 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:21.160 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:21.160 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:21.232 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:21.232 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:21.232 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:21.233 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:21.244 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=1024 N=1024 NC_max=255023
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:21.466 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:21.466 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:21.467 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:21.468 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:21.469 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:21.469 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:21.471 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:21.475 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:21.475 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:21.475 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:21.475 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:21.475 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:21.475 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:21.475 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:21.475 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:21.475 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:21.475 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:21.475 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:21.475 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:21.475 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:21.475 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:21.487 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:22.225 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349863 GHz, device_time_at_sync=1270766602187 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 583 KB (limit 1536 KB)
+[server] V11: 1024 tiles (32x32), 110 cores, max_owned=10
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=220 KB
+[server] V11 hist_pgsz=4096, hist_total=440 KB
+[server] V11 shard_table_pgsz=16384 (1024 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 130 KB (shared_off=75712, brisc_off=75840)
+[server] V11 accum scratch (initial) = 739 KB (max_owned=10, dense_off=540544)
+[server] V11 hist scratch = 4 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 28.7 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 1024x1024 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 4.0 MB/buf)
+[v11-test] adaptec2  grid= 1024 uniform  nc=  255023 rel_l2=9.93e-06 OK kernel=1.649ms
+[v11-test] adaptec2  grid= 1024 cluster  nc=  255023 rel_l2=5.04e-06 OK kernel=1.647ms
+[v11-test] adaptec2  grid= 1024 clouds   nc=  255023 rel_l2=7.48e-06 OK kernel=1.633ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (15/15 pass)
+2026-06-03 02:37:23.956 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:23.956 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:23.956 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=46.366ms, min=0.031ms, max=5.045ms, mean=1.054ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:23.956 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=48.224ms, min=0.950ms, max=5.269ms, mean=2.192ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:23.956 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=23.563ms, min=0.950ms, max=4.335ms, mean=1.813ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:23.969 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:23.969 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ adaptec2 grid 2048 ================
+[v11-test] building engine grid=2048 design=adaptec2 NC_max=255023 ...
+2026-06-03 02:37:24.530 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:24.532 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:24.533 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:24.533 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:24.536 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:24.540 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:24.540 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:24.543 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:24.544 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:24.544 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:24.546 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:24.548 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:24.549 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:24.549 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:24.621 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:24.621 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:24.621 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:24.623 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:24.634 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=2048 N=2048 NC_max=255023
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:24.896 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:24.896 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:24.896 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:24.897 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:24.898 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:24.898 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:24.901 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:24.905 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:24.905 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:24.905 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:24.905 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:24.905 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:24.905 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:24.905 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:24.905 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:24.905 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:24.905 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:24.905 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:24.905 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:24.905 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:24.905 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:24.916 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:25.649 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349821 GHz, device_time_at_sync=1274674818014 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 589 KB (limit 1536 KB)
+[server] V11: 4096 tiles (64x64), 110 cores, max_owned=38
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=880 KB
+[server] V11 hist_pgsz=16384, hist_total=1760 KB
+[server] V11 shard_table_pgsz=65536 (4096 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 184 KB (shared_off=131008, brisc_off=131136)
+[server] V11 accum scratch (initial) = 969 KB (max_owned=38, dense_off=546688)
+[server] V11 hist scratch = 16 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 26.4 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 2048x2048 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 16.0 MB/buf)
+[v11-test] adaptec2  grid= 2048 uniform  nc=  255023 rel_l2=2.24e-05 OK kernel=1.671ms
+[v11-test] adaptec2  grid= 2048 cluster  nc=  255023 rel_l2=1.64e-05 OK kernel=1.660ms
+[v11-test] adaptec2  grid= 2048 clouds   nc=  255023 rel_l2=1.86e-05 OK kernel=1.718ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (18/18 pass)
+2026-06-03 02:37:28.141 | info     |    BuildKernels | JIT cache stats: 31/31 hits (100.0%) [31 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:28.142 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:28.142 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=62, total=80.995ms, min=0.027ms, max=5.042ms, mean=1.306ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:28.142 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=31, total=85.160ms, min=0.841ms, max=5.264ms, mean=2.747ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:28.142 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=24.966ms, min=0.841ms, max=4.281ms, mean=1.920ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:28.154 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:28.154 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ adaptec3 grid 512 ================
+[v11-test] building engine grid=512 design=adaptec3 NC_max=451650 ...
+2026-06-03 02:37:28.773 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:28.776 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:28.777 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:28.777 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:28.780 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:28.784 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:28.785 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:28.787 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:28.788 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:28.788 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:28.790 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:28.793 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:28.793 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:28.793 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:28.866 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:28.866 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:28.866 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:28.867 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:28.879 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=512 N=512 NC_max=451650
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:29.096 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:29.096 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:29.096 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:29.097 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:29.098 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:29.098 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:29.101 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:29.105 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:29.105 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:29.105 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:29.105 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:29.105 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:29.105 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:29.105 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:29.105 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:29.105 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:29.105 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:29.105 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:29.105 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:29.105 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:29.105 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:29.115 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:29.856 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349876 GHz, device_time_at_sync=1279569796055 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 964 KB (limit 1536 KB)
+[server] V11: 256 tiles (16x16), 110 cores, max_owned=3
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=55 KB
+[server] V11 hist_pgsz=1024, hist_total=110 KB
+[server] V11 shard_table_pgsz=4096 (256 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 116 KB (shared_off=61888, brisc_off=62016)
+[server] V11 accum scratch (initial) = 682 KB (max_owned=3, dense_off=539008)
+[server] V11 hist scratch = 1 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 54.2 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 512x512 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 1.0 MB/buf)
+[v11-test] adaptec3  grid=  512 uniform  nc=  451650 rel_l2=2.96e-06 OK kernel=2.533ms
+[v11-test] adaptec3  grid=  512 cluster  nc=  451650 rel_l2=1.02e-06 OK kernel=2.556ms
+[v11-test] adaptec3  grid=  512 clouds   nc=  451650 rel_l2=2.22e-06 OK kernel=2.520ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (21/21 pass)
+2026-06-03 02:37:32.372 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:32.372 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:32.372 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=47.894ms, min=0.031ms, max=4.930ms, mean=1.088ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:32.372 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=49.830ms, min=0.940ms, max=5.157ms, mean=2.265ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:32.372 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=25.144ms, min=0.940ms, max=5.023ms, mean=1.934ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:32.384 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:32.384 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ adaptec3 grid 1024 ================
+[v11-test] building engine grid=1024 design=adaptec3 NC_max=451650 ...
+2026-06-03 02:37:33.002 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:33.004 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:33.005 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:33.005 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:33.007 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:33.012 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:33.012 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:33.014 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:33.015 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:33.016 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:33.018 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:33.020 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:33.021 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:33.021 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:33.094 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:33.094 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:33.094 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:33.096 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:33.107 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=1024 N=1024 NC_max=451650
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:33.397 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:33.397 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:33.398 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:33.399 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:33.400 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:33.400 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:33.402 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:33.406 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:33.406 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:33.407 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:33.407 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:33.407 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:33.407 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:33.407 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:33.407 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:33.407 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:33.407 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:33.407 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:33.407 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:33.407 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:33.407 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:33.416 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:34.158 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349804 GHz, device_time_at_sync=1284561235505 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 967 KB (limit 1536 KB)
+[server] V11: 1024 tiles (32x32), 110 cores, max_owned=10
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=220 KB
+[server] V11 hist_pgsz=4096, hist_total=440 KB
+[server] V11 shard_table_pgsz=16384 (1024 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 130 KB (shared_off=75712, brisc_off=75840)
+[server] V11 accum scratch (initial) = 739 KB (max_owned=10, dense_off=540544)
+[server] V11 hist scratch = 4 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 31.9 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 1024x1024 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 4.0 MB/buf)
+[v11-test] adaptec3  grid= 1024 uniform  nc=  451650 rel_l2=8.88e-06 OK kernel=2.570ms
+[v11-test] adaptec3  grid= 1024 cluster  nc=  451650 rel_l2=3.91e-06 OK kernel=2.559ms
+[v11-test] adaptec3  grid= 1024 clouds   nc=  451650 rel_l2=6.48e-06 OK kernel=2.537ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (24/24 pass)
+2026-06-03 02:37:36.855 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:36.855 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:36.855 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=42.999ms, min=0.026ms, max=4.476ms, mean=0.977ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:36.855 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=44.706ms, min=0.883ms, max=4.658ms, mean=2.032ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:36.855 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=22.042ms, min=0.884ms, max=3.886ms, mean=1.696ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:36.868 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:36.868 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ adaptec3 grid 2048 ================
+[v11-test] building engine grid=2048 design=adaptec3 NC_max=451650 ...
+2026-06-03 02:37:37.417 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:37.420 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:37.421 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:37.421 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:37.424 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:37.428 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:37.429 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:37.431 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:37.432 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:37.432 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:37.434 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:37.437 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:37.437 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:37.437 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:37.510 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:37.510 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:37.510 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:37.511 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:37.523 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=2048 N=2048 NC_max=451650
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:37.794 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:37.794 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:37.794 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:37.795 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:37.796 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:37.796 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:37.799 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:37.803 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:37.803 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:37.803 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:37.803 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:37.803 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:37.803 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:37.803 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:37.803 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:37.803 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:37.803 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:37.803 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:37.803 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:37.803 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:37.803 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:37.813 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:38.560 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349823 GHz, device_time_at_sync=1289792785267 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 973 KB (limit 1536 KB)
+[server] V11: 4096 tiles (64x64), 110 cores, max_owned=38
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=880 KB
+[server] V11 hist_pgsz=16384, hist_total=1760 KB
+[server] V11 shard_table_pgsz=65536 (4096 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 184 KB (shared_off=131008, brisc_off=131136)
+[server] V11 accum scratch (initial) = 969 KB (max_owned=38, dense_off=546688)
+[server] V11 hist scratch = 16 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 28.5 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 2048x2048 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 16.0 MB/buf)
+[v11-test] adaptec3  grid= 2048 uniform  nc=  451650 rel_l2=2.15e-05 OK kernel=2.612ms
+[v11-test] adaptec3  grid= 2048 cluster  nc=  451650 rel_l2=1.35e-05 OK kernel=2.573ms
+[v11-test] adaptec3  grid= 2048 clouds   nc=  451650 rel_l2=1.75e-05 OK kernel=2.553ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (27/27 pass)
+2026-06-03 02:37:42.063 | info     |    BuildKernels | JIT cache stats: 31/31 hits (100.0%) [31 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:42.063 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:42.063 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=62, total=81.313ms, min=0.024ms, max=4.428ms, mean=1.311ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:42.063 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=31, total=85.144ms, min=0.722ms, max=4.649ms, mean=2.747ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:42.063 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=26.022ms, min=0.723ms, max=4.430ms, mean=2.002ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:42.076 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:42.076 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ bigblue1 grid 512 ================
+[v11-test] building engine grid=512 design=bigblue1 NC_max=278164 ...
+2026-06-03 02:37:42.634 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:42.636 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:42.637 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:42.637 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:42.640 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:42.644 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:42.645 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:42.647 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:42.648 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:42.648 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:42.650 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:42.653 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:42.653 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:42.653 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:42.726 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:42.726 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:42.726 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:42.727 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:42.738 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=512 N=512 NC_max=278164
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:42.994 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:42.994 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:42.994 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:42.996 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:42.997 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:42.997 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:42.999 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:43.003 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:43.003 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:43.003 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:43.003 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:43.003 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:43.003 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:43.003 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:43.003 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:43.003 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:43.003 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:43.003 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:43.003 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:43.003 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:43.003 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:43.014 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:43.756 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349813 GHz, device_time_at_sync=1296088799827 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 580 KB (limit 1536 KB)
+[server] V11: 256 tiles (16x16), 110 cores, max_owned=3
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=55 KB
+[server] V11 hist_pgsz=1024, hist_total=110 KB
+[server] V11 shard_table_pgsz=4096 (256 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 116 KB (shared_off=61888, brisc_off=62016)
+[server] V11 accum scratch (initial) = 682 KB (max_owned=3, dense_off=539008)
+[server] V11 hist scratch = 1 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 21.8 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 512x512 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 1.0 MB/buf)
+[v11-test] bigblue1  grid=  512 uniform  nc=  278164 rel_l2=3.54e-06 OK kernel=1.590ms
+[v11-test] bigblue1  grid=  512 cluster  nc=  278164 rel_l2=1.29e-06 OK kernel=1.596ms
+[v11-test] bigblue1  grid=  512 clouds   nc=  278164 rel_l2=2.81e-06 OK kernel=1.565ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (30/30 pass)
+2026-06-03 02:37:45.424 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:45.424 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:45.424 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=39.012ms, min=0.024ms, max=4.097ms, mean=0.887ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:45.424 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=40.835ms, min=0.688ms, max=4.247ms, mean=1.856ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:45.424 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=20.003ms, min=0.693ms, max=3.890ms, mean=1.539ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:45.437 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:45.437 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ bigblue1 grid 1024 ================
+[v11-test] building engine grid=1024 design=bigblue1 NC_max=278164 ...
+2026-06-03 02:37:46.050 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:46.052 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:46.053 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:46.053 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:46.056 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:46.060 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:46.061 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:46.063 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:46.064 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:46.064 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:46.066 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:46.069 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:46.069 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:46.069 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:46.142 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:46.142 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:46.142 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:46.144 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:46.155 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=1024 N=1024 NC_max=278164
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:46.394 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:46.394 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:46.394 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:46.395 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:46.396 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:46.396 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:46.398 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:46.402 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:46.402 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:46.403 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:46.403 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:46.403 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:46.403 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:46.403 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:46.403 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:46.403 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:46.403 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:46.403 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:46.403 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:46.403 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:46.403 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:46.413 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:47.156 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349852 GHz, device_time_at_sync=1299914208680 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 583 KB (limit 1536 KB)
+[server] V11: 1024 tiles (32x32), 110 cores, max_owned=10
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=220 KB
+[server] V11 hist_pgsz=4096, hist_total=440 KB
+[server] V11 shard_table_pgsz=16384 (1024 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 130 KB (shared_off=75712, brisc_off=75840)
+[server] V11 accum scratch (initial) = 739 KB (max_owned=10, dense_off=540544)
+[server] V11 hist scratch = 4 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 29.0 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 1024x1024 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 4.0 MB/buf)
+[v11-test] bigblue1  grid= 1024 uniform  nc=  278164 rel_l2=9.85e-06 OK kernel=1.615ms
+[v11-test] bigblue1  grid= 1024 cluster  nc=  278164 rel_l2=4.82e-06 OK kernel=1.628ms
+[v11-test] bigblue1  grid= 1024 clouds   nc=  278164 rel_l2=7.25e-06 OK kernel=1.595ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (33/33 pass)
+2026-06-03 02:37:49.007 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:49.007 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:49.007 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=41.371ms, min=0.029ms, max=4.487ms, mean=0.940ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:49.007 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=43.256ms, min=0.787ms, max=4.670ms, mean=1.966ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:49.007 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=22.109ms, min=0.788ms, max=3.888ms, mean=1.701ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:49.020 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:49.020 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ bigblue1 grid 2048 ================
+[v11-test] building engine grid=2048 design=bigblue1 NC_max=278164 ...
+2026-06-03 02:37:49.673 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:49.676 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:49.677 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:49.677 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:49.679 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:49.683 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:49.684 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:49.686 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:49.687 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:49.687 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:49.689 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:49.692 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:49.692 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:49.692 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:49.765 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:49.765 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:49.765 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:49.766 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:49.777 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=2048 N=2048 NC_max=278164
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:49.990 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:49.990 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:49.991 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:49.992 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:49.993 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:49.993 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:49.995 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:50.000 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:50.000 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:50.000 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:50.000 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:50.000 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:50.000 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:50.000 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:50.000 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:50.000 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:50.000 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:50.000 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:50.000 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:50.000 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:50.000 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:50.011 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:50.757 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349881 GHz, device_time_at_sync=1303969252687 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 589 KB (limit 1536 KB)
+[server] V11: 4096 tiles (64x64), 110 cores, max_owned=38
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=880 KB
+[server] V11 hist_pgsz=16384, hist_total=1760 KB
+[server] V11 shard_table_pgsz=65536 (4096 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 184 KB (shared_off=131008, brisc_off=131136)
+[server] V11 accum scratch (initial) = 969 KB (max_owned=38, dense_off=546688)
+[server] V11 hist scratch = 16 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 24.7 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 2048x2048 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 16.0 MB/buf)
+[v11-test] bigblue1  grid= 2048 uniform  nc=  278164 rel_l2=2.23e-05 OK kernel=1.687ms
+[v11-test] bigblue1  grid= 2048 cluster  nc=  278164 rel_l2=1.60e-05 OK kernel=1.697ms
+[v11-test] bigblue1  grid= 2048 clouds   nc=  278164 rel_l2=1.85e-05 OK kernel=1.655ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (36/36 pass)
+2026-06-03 02:37:53.373 | info     |    BuildKernels | JIT cache stats: 31/31 hits (100.0%) [31 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:53.373 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:53.373 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=62, total=87.867ms, min=0.030ms, max=18.629ms, mean=1.417ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:53.373 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=31, total=92.424ms, min=1.042ms, max=18.794ms, mean=2.981ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:53.373 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=23.335ms, min=1.042ms, max=3.741ms, mean=1.795ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:53.386 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:53.386 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ bigblue2 grid 512 ================
+[v11-test] building engine grid=512 design=bigblue2 NC_max=557866 ...
+2026-06-03 02:37:53.937 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:53.940 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:53.941 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:53.941 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:53.943 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:53.948 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:53.948 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:53.950 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:53.951 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:53.951 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:53.954 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:53.956 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:53.956 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:53.956 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:54.029 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:54.029 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:54.029 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:54.030 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:54.041 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=512 N=512 NC_max=557866
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:54.297 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:54.297 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:54.297 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:54.299 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:54.300 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:54.300 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:54.302 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:54.306 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:54.306 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:54.306 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:54.306 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:54.306 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:54.306 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:54.306 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:54.306 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:54.306 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:54.306 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:54.306 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:54.306 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:54.306 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:54.306 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:54.317 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:55.089 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349818 GHz, device_time_at_sync=1309098640954 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 964 KB (limit 1536 KB)
+[server] V11: 256 tiles (16x16), 110 cores, max_owned=3
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=55 KB
+[server] V11 hist_pgsz=1024, hist_total=110 KB
+[server] V11 shard_table_pgsz=4096 (256 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 116 KB (shared_off=61888, brisc_off=62016)
+[server] V11 accum scratch (initial) = 682 KB (max_owned=3, dense_off=539008)
+[server] V11 hist scratch = 1 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 37.2 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 512x512 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 1.0 MB/buf)
+[v11-test] bigblue2  grid=  512 uniform  nc=  557866 rel_l2=2.74e-06 OK kernel=2.586ms
+[v11-test] bigblue2  grid=  512 cluster  nc=  557866 rel_l2=9.35e-07 OK kernel=2.591ms
+[v11-test] bigblue2  grid=  512 clouds   nc=  557866 rel_l2=1.43e-06 OK kernel=2.565ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (39/39 pass)
+2026-06-03 02:37:58.142 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:37:58.142 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:37:58.142 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=63.429ms, min=0.025ms, max=22.181ms, mean=1.442ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:58.142 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=65.613ms, min=0.771ms, max=22.399ms, mean=2.982ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:58.142 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=24.184ms, min=0.772ms, max=5.028ms, mean=1.860ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:37:58.155 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:37:58.155 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ bigblue2 grid 1024 ================
+[v11-test] building engine grid=1024 design=bigblue2 NC_max=557866 ...
+2026-06-03 02:37:58.742 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:58.744 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:58.745 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:58.745 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:58.747 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:58.752 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:37:58.752 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:58.754 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:58.755 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:58.755 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:58.758 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:58.760 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:37:58.760 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:37:58.760 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:37:58.837 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:37:58.837 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:37:58.837 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:37:58.838 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:37:58.850 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=1024 N=1024 NC_max=557866
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:37:59.102 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:37:59.102 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:37:59.102 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:37:59.103 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:59.104 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:37:59.104 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:37:59.107 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:37:59.111 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:59.111 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:37:59.111 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:37:59.111 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:59.111 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:59.111 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:37:59.111 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:59.111 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:37:59.111 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:37:59.111 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:37:59.111 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:37:59.111 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:37:59.111 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:37:59.111 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:37:59.122 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:37:59.864 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349830 GHz, device_time_at_sync=1314799975919 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 967 KB (limit 1536 KB)
+[server] V11: 1024 tiles (32x32), 110 cores, max_owned=10
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=220 KB
+[server] V11 hist_pgsz=4096, hist_total=440 KB
+[server] V11 shard_table_pgsz=16384 (1024 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 130 KB (shared_off=75712, brisc_off=75840)
+[server] V11 accum scratch (initial) = 739 KB (max_owned=10, dense_off=540544)
+[server] V11 hist scratch = 4 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 28.0 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 1024x1024 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 4.0 MB/buf)
+[v11-test] bigblue2  grid= 1024 uniform  nc=  557866 rel_l2=8.52e-06 OK kernel=2.597ms
+[v11-test] bigblue2  grid= 1024 cluster  nc=  557866 rel_l2=3.55e-06 OK kernel=2.603ms
+[v11-test] bigblue2  grid= 1024 clouds   nc=  557866 rel_l2=4.04e-06 OK kernel=2.557ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (42/42 pass)
+2026-06-03 02:38:03.099 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:38:03.099 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:38:03.099 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=40.062ms, min=0.029ms, max=4.336ms, mean=0.910ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:03.099 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=41.817ms, min=0.850ms, max=4.509ms, mean=1.901ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:03.099 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=21.054ms, min=0.851ms, max=3.640ms, mean=1.620ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:03.110 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:38:03.110 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ bigblue2 grid 2048 ================
+[v11-test] building engine grid=2048 design=bigblue2 NC_max=557866 ...
+2026-06-03 02:38:03.750 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:03.753 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:03.754 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:03.754 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:03.756 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:03.760 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:38:03.761 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:03.763 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:03.764 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:03.764 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:03.767 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:03.769 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:38:03.770 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:38:03.770 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:38:03.847 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:38:03.848 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:38:03.848 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:38:03.849 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:38:03.860 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=2048 N=2048 NC_max=557866
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:38:04.105 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:38:04.105 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:38:04.105 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:04.106 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:04.107 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:04.107 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:04.110 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:04.114 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:38:04.114 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:38:04.114 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:38:04.114 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:04.114 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:04.114 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:38:04.114 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:04.114 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:04.114 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:38:04.114 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:38:04.114 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:38:04.114 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:38:04.114 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:38:04.114 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:38:04.124 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:38:04.888 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349812 GHz, device_time_at_sync=1320800795600 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] scatter L1 scratch = 973 KB (limit 1536 KB)
+[server] V11: 4096 tiles (64x64), 110 cores, max_owned=38
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=880 KB
+[server] V11 hist_pgsz=16384, hist_total=1760 KB
+[server] V11 shard_table_pgsz=65536 (4096 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 184 KB (shared_off=131008, brisc_off=131136)
+[server] V11 accum scratch (initial) = 969 KB (max_owned=38, dense_off=546688)
+[server] V11 hist scratch = 16 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 27.6 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 2048x2048 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 16.0 MB/buf)
+[v11-test] bigblue2  grid= 2048 uniform  nc=  557866 rel_l2=2.12e-05 OK kernel=2.687ms
+[v11-test] bigblue2  grid= 2048 cluster  nc=  557866 rel_l2=1.27e-05 OK kernel=2.679ms
+[v11-test] bigblue2  grid= 2048 clouds   nc=  557866 rel_l2=1.15e-05 OK kernel=2.651ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (45/45 pass)
+2026-06-03 02:38:08.899 | info     |    BuildKernels | JIT cache stats: 31/31 hits (100.0%) [31 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:38:08.899 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:38:08.899 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=62, total=92.095ms, min=0.024ms, max=22.799ms, mean=1.485ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:08.899 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=31, total=95.440ms, min=0.703ms, max=22.960ms, mean=3.079ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:08.899 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=21.468ms, min=0.708ms, max=3.631ms, mean=1.651ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:08.912 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:38:08.912 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ bigblue3 grid 512 ================
+[v11-test] building engine grid=512 design=bigblue3 NC_max=1096812 ...
+2026-06-03 02:38:09.574 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:09.576 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:09.577 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:09.577 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:09.580 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:09.584 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:38:09.584 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:09.587 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:09.588 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:09.588 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:09.590 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:09.592 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:38:09.593 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:38:09.593 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:38:09.665 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:38:09.665 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:38:09.665 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:38:09.667 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:38:09.678 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=512 N=512 NC_max=1096812
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:38:09.902 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:38:09.902 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:38:09.903 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:09.904 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:09.905 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:09.905 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:09.907 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:09.912 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:38:09.912 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:38:09.912 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:38:09.912 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:09.912 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:09.912 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:38:09.912 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:09.912 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:09.912 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:38:09.912 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:38:09.912 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:38:09.912 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:38:09.912 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:38:09.912 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:38:09.923 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:38:10.673 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349860 GHz, device_time_at_sync=1327803405272 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] WARNING: max_contrib 122880 > L1 cap 83968; capping (some large-cell contribs may be dropped)
+[server] scatter L1 scratch = 1316 KB (limit 1536 KB)
+[server] V11: 256 tiles (16x16), 110 cores, max_owned=3
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=55 KB
+[server] V11 hist_pgsz=1024, hist_total=110 KB
+[server] V11 shard_table_pgsz=4096 (256 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 116 KB (shared_off=61888, brisc_off=62016)
+[server] V11 accum scratch (initial) = 682 KB (max_owned=3, dense_off=539008)
+[server] V11 hist scratch = 1 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 36.1 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 512x512 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 1.0 MB/buf)
+[v11-test] bigblue3  grid=  512 uniform  nc= 1096812 rel_l2=2.06e-06 OK kernel=4.949ms
+[v11-test] bigblue3  grid=  512 cluster  nc= 1096812 rel_l2=9.02e-02 FAIL kernel=4.979ms
+[v11-test] bigblue3  grid=  512 clouds   nc= 1096812 rel_l2=3.46e-01 FAIL kernel=4.820ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (46/48 pass)
+2026-06-03 02:38:16.385 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:38:16.385 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:38:16.385 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=45.398ms, min=0.027ms, max=5.021ms, mean=1.032ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:16.385 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=47.095ms, min=0.858ms, max=5.252ms, mean=2.141ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:16.385 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=23.389ms, min=0.859ms, max=4.284ms, mean=1.799ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:16.397 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:38:16.397 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ bigblue3 grid 1024 ================
+[v11-test] building engine grid=1024 design=bigblue3 NC_max=1096812 ...
+2026-06-03 02:38:17.025 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:17.028 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:17.029 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:17.029 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:17.031 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:17.035 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:38:17.035 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:17.038 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:17.038 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:17.038 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:17.041 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:17.043 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:38:17.044 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:38:17.044 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:38:17.116 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:38:17.116 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:38:17.116 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:38:17.117 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:38:17.128 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=1024 N=1024 NC_max=1096812
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:38:17.398 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:38:17.398 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:38:17.398 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:17.399 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:17.400 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:17.400 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:17.403 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:17.407 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:38:17.407 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:38:17.407 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:38:17.407 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:17.407 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:17.407 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:38:17.407 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:17.407 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:17.407 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:38:17.407 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:38:17.407 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:38:17.407 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:38:17.407 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:38:17.407 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:38:17.417 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:38:18.158 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349827 GHz, device_time_at_sync=1337161345086 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] WARNING: max_contrib 122880 > L1 cap 83776; capping (some large-cell contribs may be dropped)
+[server] scatter L1 scratch = 1316 KB (limit 1536 KB)
+[server] V11: 1024 tiles (32x32), 110 cores, max_owned=10
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=220 KB
+[server] V11 hist_pgsz=4096, hist_total=440 KB
+[server] V11 shard_table_pgsz=16384 (1024 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 130 KB (shared_off=75712, brisc_off=75840)
+[server] V11 accum scratch (initial) = 739 KB (max_owned=10, dense_off=540544)
+[server] V11 hist scratch = 4 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 51.4 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 1024x1024 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 4.0 MB/buf)
+[v11-test] bigblue3  grid= 1024 uniform  nc= 1096812 rel_l2=7.02e-06 OK kernel=4.970ms
+[v11-test] bigblue3  grid= 1024 cluster  nc= 1096812 rel_l2=7.66e-02 FAIL kernel=4.988ms
+[v11-test] bigblue3  grid= 1024 clouds   nc= 1096812 rel_l2=2.29e-01 FAIL kernel=4.891ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (47/51 pass)
+2026-06-03 02:38:24.322 | info     |    BuildKernels | JIT cache stats: 22/22 hits (100.0%) [22 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:38:24.322 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:38:24.322 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=44, total=46.516ms, min=0.024ms, max=4.861ms, mean=1.057ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:24.322 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=22, total=48.684ms, min=0.885ms, max=5.213ms, mean=2.213ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:24.322 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=24.221ms, min=0.886ms, max=4.147ms, mean=1.863ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:24.334 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:38:24.334 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
+================ bigblue3 grid 2048 ================
+[v11-test] building engine grid=2048 design=bigblue3 NC_max=1096812 ...
+2026-06-03 02:38:24.917 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:24.920 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:24.921 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:24.921 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:24.924 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:24.927 | info     |          Device | Opening user mode device driver (tt_cluster.cpp:225)
+2026-06-03 02:38:24.928 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:24.930 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:24.931 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:24.931 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:24.933 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:24.936 | info     |             UMD | Harvesting masks for Chip 0: Tensix: 0xc0 DRAM: 0x0 ETH: 0x120 PCIe: 0x2 L2CPU: 0x0 (cluster.cpp:270)
+2026-06-03 02:38:24.936 | info     |             UMD | Initializing iommu for sysmem (size: 0x40000000). (silicon_sysmem_manager.cpp:337)
+2026-06-03 02:38:24.936 | info     |             UMD | Allocating sysmem for IOMMU (size: 0x40000000). (silicon_sysmem_manager.cpp:343)
+2026-06-03 02:38:25.008 | info     |             UMD | Opening local chip ids/PCIe ids: {0}/[1] and remote chip ids {} (cluster.cpp:159)
+2026-06-03 02:38:25.008 | info     |             UMD | IOMMU: enabled (cluster.cpp:133)
+2026-06-03 02:38:25.008 | info     |             UMD | KMD version: 2.7.0 (cluster.cpp:136)
+2026-06-03 02:38:25.009 | info     |             UMD | Starting devices in cluster (cluster.cpp:1042)
+2026-06-03 02:38:25.021 | info     |             UMD | Mapped sysmem without hugepages to IOVA 0x40000000; NOC address 0x1000000000000000 (silicon_sysmem_manager.cpp:394)
+[v19_engine] V19 in-process engine init
+[v19_engine] M=2048 N=2048 NC_max=1096812
+[v19_engine] gather_mode=v11-tile-routed
+2026-06-03 02:38:25.297 | info     |     Distributed | Using auto discovery to generate mesh graph. (metal_env.cpp:332)
+2026-06-03 02:38:25.297 | info     |     Distributed | Constructing control plane using auto-discovery (no mesh graph descriptor). (metal_env.cpp:394)
+2026-06-03 02:38:25.297 | info     |             UMD | Creating TopologyDiscovery for architecture: blackhole (topology_discovery.cpp:73)
+2026-06-03 02:38:25.298 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:25.299 | info     |             UMD | Established firmware bundle version: 19.8.0 (topology_discovery.cpp:537)
+2026-06-03 02:38:25.299 | info     |             UMD | Firmware bundle version 19.8.0 on the system is newer than the latest fully tested version 19.5.0 for blackhole architecture. Newest features may not be supported. (topology_discovery.cpp:569)
+2026-06-03 02:38:25.302 | warning  |             UMD | Low power mode is disabled while UMD holds open file descriptors. The device will return to low power mode once all file descriptors are closed. (topology_discovery.cpp:141)
+2026-06-03 02:38:25.306 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:38:25.306 | warning  |          Always | Unknown motherboard 'H12DSG-O-CPU' for chip_id=0 (bus_id=0x1) — defaulting tray_id to 0. Add this motherboard and its bus IDs to mobo_to_bus_ids in physical_system_discovery.cpp. (physical_system_discovery.cpp:62)
+2026-06-03 02:38:25.306 | info     |          Fabric | TopologyMapper: Logical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1474)
+2026-06-03 02:38:25.306 | info     |          Fabric | 
+=== Logical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:25.306 | info     |          Fabric | 
+=== Logical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:25.306 | info     |          Fabric | TopologyMapper: Physical Multi-Mesh Adjacency Map: (topology_mapper.cpp:1485)
+2026-06-03 02:38:25.306 | info     |          Fabric | 
+=== Physical Mesh-Level Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:25.306 | info     |          Fabric | 
+=== Physical Mesh 0 Internal Graph Adjacency Map ===
+Total nodes: 1
+Degree histogram: {0:1}
+ (topology_solver.tpp:94)
+2026-06-03 02:38:25.306 | info     |          Fabric | Starting multi-mesh mapping: 1 logical mesh(es) to 1 physical mesh(es) (topology_mapper_utils.cpp:1469)
+2026-06-03 02:38:25.306 | info     |          Fabric | Multi-mesh mapping attempt 1/2: Trying inter-mesh mapping (topology_mapper_utils.cpp:1510)
+2026-06-03 02:38:25.306 | info     |          Fabric | Attempt 1: Inter-mesh mapping succeeded, found 1 mesh pair(s) (topology_mapper_utils.cpp:1539)
+2026-06-03 02:38:25.306 | info     |          Fabric | Attempt 1: Mapping 1 mesh pair(s) (topology_mapper_utils.cpp:1547)
+2026-06-03 02:38:25.306 | info     |          Fabric | Attempt 1: Mapping mesh 0 -> 0 (topology_mapper_utils.cpp:1554)
+2026-06-03 02:38:25.306 | info     |          Fabric | Multi-mesh mapping succeeded after 1 attempt(s): 1 mesh pair(s) mapped (topology_mapper_utils.cpp:1686)
+2026-06-03 02:38:25.317 | info     |    BuildKernels | Using pre-compiled firmware from: /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/tt-metal/tt_metal/pre-compiled/2010209910287226822/ (build_env_manager.cpp:260)
+2026-06-03 02:38:26.058 | info     |           Metal | [Real-time profiler] Device 0 sync complete: 100 samples, frequency=1.349796 GHz, device_time_at_sync=1347112372379 cycles (realtime_profiler_manager.cpp:1082)
+[v19_engine] TT device opened.
+[server] grid = 11x10  nc_all = 110 (odd=0)
+[server] WARNING: max_contrib 122880 > L1 cap 83392; capping (some large-cell contribs may be dropped)
+[server] scatter L1 scratch = 1316 KB (limit 1536 KB)
+[server] V11: 4096 tiles (64x64), 110 cores, max_owned=38
+[server] V11: route_pgsz=32832 (max 4096 tuples), route_total=378 MB, owned_lookup_total=880 KB
+[server] V11 hist_pgsz=16384, hist_total=1760 KB
+[server] V11 shard_table_pgsz=65536 (4096 tiles × 16 B)
+[server] V11 shard_reduce_buf: 2048 pages × 4096 B = 8192 KB
+[server] V11 scatter scratch = 184 KB (shared_off=131008, brisc_off=131136)
+[server] V11 accum scratch (initial) = 969 KB (max_owned=38, dense_off=546688)
+[server] V11 hist scratch = 16 KB
+[server] JIT compiling kernels...
+[server]   V11 hist JIT...
+[server]   V11 scatter JIT...
+[server]   V11 accum JIT...
+[server]   V11 (and V19) JIT done.
+[server] JIT done: 50.6 ms
+[v19_engine] Uploading DCT matrices via TTNN...
+[ttnn_solver] Matrices uploaded for 2048x2048 bsx=1.0000 bsy=1.0000
+[v19_engine] TTNN solver ready.
+[v19_engine] init complete.
+[v19_engine] V19EngineWrap init: CPU_DCT=1  (fresh density+fx per iter, fy pre-zeroed once, duplicate memcpy via alias-detect; 16.0 MB/buf)
+[v11-test] bigblue3  grid= 2048 uniform  nc= 1096812 rel_l2=1.95e-05 OK kernel=5.075ms
+[v11-test] bigblue3  grid= 2048 cluster  nc= 1096812 rel_l2=9.62e-06 OK kernel=5.084ms
+[v11-test] bigblue3  grid= 2048 clouds   nc= 1096812 rel_l2=5.69e-02 FAIL kernel=4.952ms
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/results.csv
+[v11-test] wrote /localdev/ayadav/tt-work/TTPort/DREAMPlaceTT-Framework/DREAMPlaceTT/history/01-forward-scatter/v11-scatter/profile/REPORT.md  (49/54 pass)
+2026-06-03 02:38:33.178 | info     |    BuildKernels | JIT cache stats: 31/31 hits (100.0%) [31 cached, 1 build-once dedup, 0 merged artifacts, 0 merged genfiles] (build_cache_telemetry.cpp:207)
+2026-06-03 02:38:33.178 | info     |    BuildKernels | JIT telemetry: 3 registered TelemetryTokens (build_cache_telemetry.cpp:230)
+2026-06-03 02:38:33.178 | info     |    BuildKernels | JIT telemetry [dependencies_up_to_date]: count=62, total=84.955ms, min=0.033ms, max=5.490ms, mean=1.370ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:33.178 | info     |    BuildKernels | JIT telemetry [JitBuildState::build]: count=31, total=88.209ms, min=0.796ms, max=5.716ms, mean=2.845ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:33.178 | info     |    BuildKernels | JIT telemetry [jit_build]: count=13, total=25.808ms, min=0.797ms, max=4.129ms, mean=1.985ms (build_cache_telemetry.cpp:246)
+2026-06-03 02:38:33.191 | info     |          Device | Closing user mode device drivers (tt_cluster.cpp:496)
+2026-06-03 02:38:33.191 | info     |             UMD | Closing devices in cluster (cluster.cpp:1054)
