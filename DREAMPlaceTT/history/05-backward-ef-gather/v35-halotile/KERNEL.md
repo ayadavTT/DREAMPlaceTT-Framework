@@ -33,6 +33,10 @@ the **shipped** path completed the "remaining steps" (on-chip grouping + live wi
      borderline — even exact fp64 CPU can't reach 0.07 for them).
 - See `../../../PIPELINE.md` for the full live pipeline + cost frontier (backward `d2h`
   grad-unsort is the dominant residual).
+- **Per-zone device profile (TT Tracy):** `profile/zones.txt` + `profile/PROFILE.md`
+  (captured 2026-06-06 via `v35live`). Headline: the SFPU gather is cheap (~22 µs/instance);
+  `V35-PLACE` (863 µs) + `V35-COUNT` (379 µs) grouping and `V35-LOADBAND` (403 µs) field-band
+  DMA dominate the on-device backward → the targets for a next-gen kernel.
 
 ---
 

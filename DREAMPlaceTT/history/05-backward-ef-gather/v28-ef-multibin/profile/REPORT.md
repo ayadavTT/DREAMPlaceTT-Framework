@@ -7,4 +7,12 @@ From the isolated harness:
 [v28] accuracy: max_abs=1.53986e-06 rel_l2=6.98594e-08 nbad=0  OK
 ```
 
-Full stdout: `run.log`. Per-zone Tracy pending (ENABLE_TRACY=ON; needs dump_profiler on clean device).
+Full stdout: `run.log`.
+
+**Per-zone Tracy CAPTURED 2026-06-06** (the "pending" capture is done). The shipped V35
+backward reuses `v28_ncrisc` (NCRISC fy band + drain) + `v28_compute` (SFPU sum); its device
+zones — `V28N-LOADBAND` ≈145 µs, `V28N-GATHER` ≈22 µs/instance, `V28N-DRAIN` ≈2.5 µs — were
+captured via the `v35live` harness (clean-device profiler dump) and live in
+`../v35-halotile/profile/{zones.txt,PROFILE.md}` (alongside the v35_count/place/gather zones).
+`v28_compute` has no `DeviceZoneScopedN` markers (pure SFPU) so it has no sub-zones; its cost
+shows up inside the gather's `*-GATHER` zone (the multiply-accumulate is cheap).

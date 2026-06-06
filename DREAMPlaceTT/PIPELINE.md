@@ -141,6 +141,24 @@ bigblue3_2048) because the gradient is read back to host and scattered `grad[sel
 `fold` and `field_d2h` are near-zero (the field stays on chip via `skip_field_d2h`);
 do **not** re-introduce the host field download.
 
+### Per-kernel device zones (backward) — captured
+TT device-zone (Tracy) profiles for the live **backward** kernels are captured in
+`history/05-backward-ef-gather/v35-halotile/profile/{zones.txt,PROFILE.md}` (via the
+`v35live` harness, `TT_METAL_DEVICE_PROFILER=1`, clean `CloseDevice` dump). Key refinement
+of the frontier: **the SFPU gather compute is cheap (`V35-GATHER` ≈22 µs/instance) — the
+cost is the grouping (`V35-PLACE` 863 µs, `V35-COUNT` 379 µs) and the field-band DMA
+(`V35-LOADBAND` 403 µs fx + 145 µs fy).** So a next-gen backward should attack the
+count→place grouping and the band load, not the multiply-accumulate.
+
+*Per-zone capture method:* run a harness binary (which `CloseDevice`s cleanly) with
+`TT_METAL_DEVICE_PROFILER=1`, then parse `generated/profiler/.logs/profile_log_device.csv`
+(`history/harness/parse_zones.py`). **The production run can't be used** for this — the in-process
+engine never `CloseDevice`s, so the profiler CSV never flushes (`TT_PROFILE_DUMP=1`'s
+per-iter `ReadMeshDeviceProfilerResults` reads but doesn't flush the file). **Forward**
+kernels (v4/v11/v31-scatter/v19-writeout) have **no standalone harness**, so their per-zone
+isn't captured yet — their per-*stage* cost is the table above; capturing per-zone would
+need a forward harness host (a clean next task).
+
 ---
 
 ## 5. Developing a new kernel (isolation → production)

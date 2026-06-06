@@ -1,0 +1,18 @@
+# V35 backward — per-zone device profile (TT Tracy device zones)
+# Captured 2026-06-06 via the v35live harness (TT_METAL_DEVICE_PROFILER=1, clean CloseDevice dump).
+# Config: adaptec1-like, N=M=2048, ncells=210904, nc=130, W=37, ntiles=56, max_k=6 max_h=3 (cluster=0).
+# Harness stage wall-clock: count=0.633 plan=0.251 place=1.330 gather=1.917 ms (TOTAL 4.131 incl PREP).
+# Columns: kernel, zone (DeviceZoneScopedN), RISC, n=instances, med_us / max_us per instance.
+# NOTE: per-INSTANCE medians (per core, per invocation); the gather inner zones (GATHER) run
+#       max_k*max_h*n_batches times/iter, so their per-iter sum >> the single-instance median.
+#
+kernel                    zone            risc        n    med_us    max_us
+v28_ncrisc.cpp            V28N-LOADBAND   NCRISC   1040    145.09    355.65
+v28_ncrisc.cpp            V28N-GATHER     NCRISC  37440     22.44     23.04
+v28_ncrisc.cpp            V28N-DRAIN      NCRISC   2080      2.48      2.66
+v35_count.cpp             V35-COUNT       BRISC     260    378.84    581.82
+v35_gather_brisc.cpp      V35-LOADBAND    BRISC    1040    402.98    717.92
+v35_gather_brisc.cpp      V35-PREP        BRISC    2080    134.80    169.78
+v35_gather_brisc.cpp      V35-LOADCHUNK   BRISC    1040     58.70    202.07
+v35_gather_brisc.cpp      V35-GATHER      BRISC   37440     22.43     22.52
+v35_place.cpp             V35-PLACE       BRISC     260    862.73   1250.51
