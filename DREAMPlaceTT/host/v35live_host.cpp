@@ -75,10 +75,12 @@ int main(int argc,char**argv){
     const uint32_t grouped_pg=(uint32_t)((uint64_t)ncells*128u + 128u);   // 128 B records (64-B aligned)
     const uint32_t plan_pg=cnt_pg;                               // per-core srcprefix page
     const uint32_t tb_pg=((ntiles*4u+63u)&~63u);
-    const uint32_t field_pg=(uint32_t)((uint64_t)N*M*4u);
+    // page-interleaved field: one page per x-bin (M floats), N pages — matches the
+    // live TTNN DCT field layout and the fixed page-loop band read in the kernels.
+    const uint32_t field_pg=(uint32_t)((uint64_t)M*4u);
     auto stb=mb(stash_pg,stash_pg), cntb=mb((uint64_t)nc*cnt_pg,cnt_pg), grb=mb(grouped_pg,grouped_pg);
     auto tbb=mb(tb_pg,tb_pg), spb=mb((uint64_t)nc*plan_pg,plan_pg);
-    auto fxb=mb(field_pg,field_pg), fyb=mb(field_pg,field_pg);
+    auto fxb=mb((uint64_t)N*M*4u,field_pg), fyb=mb((uint64_t)N*M*4u,field_pg);
     EnqueueWriteMeshBuffer(cq,stb,stash,false); EnqueueWriteMeshBuffer(cq,fxb,fx,false); EnqueueWriteMeshBuffer(cq,fyb,fy,false); Finish(cq);
     uint32_t sta=stb->address(),cnta=cntb->address(),gra=grb->address(),tba=tbb->address(),spa=spb->address(),fxa=fxb->address(),fya=fyb->address();
 

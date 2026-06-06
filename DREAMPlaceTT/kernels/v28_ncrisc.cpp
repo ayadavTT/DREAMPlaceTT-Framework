@@ -42,7 +42,10 @@ void kernel_main() {
     float* fieldy;
     { DeviceZoneScopedN("V28N-LOADBAND");
       cb_reserve_back(CB_FIELDY,1); uint32_t ly=get_write_ptr(CB_FIELDY);
-      noc_async_read(fyg.get_noc_addr(0)+(uint64_t)col0*M*4u, ly, valid_cols*M*4u);
+      // page-interleaved field across DRAM banks → read page-by-page (x-bin
+      // col0+i → L1 offset i*M), NOT one contiguous block (see v35_gather_brisc).
+      for (uint32_t i=0;i<valid_cols;++i)
+          noc_async_read(fyg.get_noc_addr(col0+i), ly + i*M*4u, M*4u);
       noc_async_read_barrier(); fieldy=reinterpret_cast<float*>(ly);
       for (uint32_t i=valid_cols*M; i<band_cols*M+max_h+8u; ++i) fieldy[i]=0.f;
     }

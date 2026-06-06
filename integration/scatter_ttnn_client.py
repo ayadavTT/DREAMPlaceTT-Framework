@@ -686,6 +686,31 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
             for _k, _v in _prof.items():
                 timing[_k] = _v
             _client._timings[-1] = timing
+            # ── Fine-grained FORWARD timing: every stage incl. host copies +
+            # engine sub-stages, with residuals so pieces SUM to EP_TOTAL.
+            if os.environ.get("FWD_TIMING") == "1":
+                _fn2 = getattr(_client, "_fwd_full_n", 0); _client._fwd_full_n = _fn2 + 1
+                if _fn2 % 20 == 0:
+                    _g = timing
+                    _eng_sum = (_g.get('h2d_ms',0)+_g.get('scatter_ms',0)+_g.get('gather_ms',0)
+                                +_g.get('d2h_density_ms',0)+_g.get('ttnn_upload_ms',0)
+                                +_g.get('ttnn_compute_ms',0)+_g.get('ttnn_download_ms',0)
+                                +_g.get('fw_ms',0))
+                    _srv  = _g.get('total_server_ms',0)
+                    _eng_resid = _srv - _eng_sum        # fold(ttnn::add) + untimed engine
+                    _call = _prof.get('call_ms',0)
+                    _wrap = _call - _srv                # field torch-wrap + pybind marshalling
+                    _eptot = _g.get('ep_total_ms',0)
+                    _resid = _eptot - (_prof.get('prep_cells_ms',0)+_call
+                                       +_prof.get('dct_ms',0)+_prof.get('ctx_setup_ms',0))
+                    print(f"[fwd_full] iter~{_fn2}: prep(pos→np)={_prof.get('prep_cells_ms',0):.3f} "
+                          f"| engine[h2d={_g.get('h2d_ms',0):.3f} scatter={_g.get('scatter_ms',0):.3f} "
+                          f"writeout={_g.get('gather_ms',0):.3f} dens_d2h={_g.get('d2h_density_ms',0):.3f} "
+                          f"dct_up={_g.get('ttnn_upload_ms',0):.3f} dct={_g.get('ttnn_compute_ms',0):.3f} "
+                          f"field_d2h={_g.get('ttnn_download_ms',0):.3f} field_cpy={_g.get('fw_ms',0):.3f} "
+                          f"fold+resid={_eng_resid:.3f}] eng_wall={_srv:.3f} field_wrap={_wrap:.3f} "
+                          f"ctx={_prof.get('ctx_setup_ms',0):.3f} resid={_resid:.3f} EP_TOTAL={_eptot:.3f} ms",
+                          flush=True)
             return torch.zeros(1, dtype=pos.dtype, device=pos.device)
 
         # Raw position + size for movable+filler cells.
@@ -912,10 +937,17 @@ def patch_dreamplace(container: str, ipc_dir: str, num_cells: int = 0,
                                    ).detach().cpu().numpy().astype(_np.float32)
                 orig_sy_full_np = (node_size_y_clamped + 2.0 * offset_y
                                    ).detach().cpu().numpy().astype(_np.float32)
+                # Pass per-cell offset + ratio so V31_EF_GEOM uses the REAL clamped
+                # footprint at (pos+offset) and stashes DREAMPlace-exact geometry for
+                # the backward (without these, have_off=False → forward falls back to
+                # orig-size@pos → V35/FCCS backward gather the wrong bins → no converge).
                 _client.configure_cells(
                     orig_sx_full_np, orig_sy_full_np,
                     n_movable=n_mov, n_filler=n_fil, num_nodes=num_nodes,
                     bin_size_x=float(bin_size_x), bin_size_y=float(bin_size_y),
+                    offx_all=offset_x.detach().cpu().numpy().astype(_np.float32),
+                    offy_all=offset_y.detach().cpu().numpy().astype(_np.float32),
+                    ratio_all=ratio.detach().cpu().numpy().astype(_np.float32),
                 )
                 _client._cpp_fast_path_configured = True
                 print(f"[scatter_ttnn] C++ fast path armed (new_nc={_client._engine.new_nc})",

@@ -180,7 +180,12 @@ void kernel_main() {
                     g[0] = cell_base + ci;     // active cell index (oidx)
                     g[1] = bxl_c;
                     g[2] = byl_c;
-                    g[5] = bin_area_bits;
+                    // word5 = ratio_c · bin_area (BRISC half) — exact V35 grad. Without
+                    // the per-cell ratio_c the stashed (ratio-free) overlaps make movable
+                    // cells over-count by 1/ratio. Mirrors the NCRISC stash; ratio_l1 is
+                    // this tile's BRISC-half ratio, indexed by ci-TILE_ELEMS/2 (0..511).
+                    if (do_ratio) { cv.u = bin_area_bits; cv.f *= ratio_l1[ci - TILE_ELEMS / 2u]; g[5] = cv.u; }
+                    else           { g[5] = bin_area_bits; }
                     uint32_t kc = 0u, hc = 0u;
                     if (bxl_u < nbx && byl_u < nby) {
                         if (geom_int) {

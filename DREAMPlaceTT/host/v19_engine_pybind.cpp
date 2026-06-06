@@ -34,6 +34,8 @@
 #include <vector>
 
 #include "v19_engine.h"
+#include "v21_ef_engine.h"
+#include "v35_ef_engine.h"
 #include <tt-metalium/host_api.hpp>
 #include <tt-metalium/distributed.hpp>
 
@@ -41,6 +43,8 @@ namespace py = pybind11;
 using namespace pybind11::literals;
 using v19::V19Engine;
 using v19::ScatterTiming;
+using v21ef::V21EFEngine;
+using v21ef::EFTiming;
 
 // Build the per-iter timing dict in the same shape as the IPC client
 // (scatter_ttnn_client.py:511-526). IPC-bucket keys are 0.0 — that's
@@ -363,8 +367,12 @@ public:
         offset_y_.assign(new_nc, 0.0f);
         send_sx_arr_ = py::array_t<float>(new_nc);
         send_sy_arr_ = py::array_t<float>(new_nc);
-        float* ssx = send_sx_arr_.mutable_data();
-        float* ssy = send_sy_arr_.mutable_data();
+        // Direct-fill the engine's own input buffers (soa_padded, zeroed tail)
+        // so scatter() skips the per-iter host→host memcpy of px/py/sx/sy.
+        // Fall back to the local send_ arrays if new_nc exceeds the engine buffer.
+        use_direct_in_ = (new_nc <= (int)eng_.soa_padded());
+        float* ssx = use_direct_in_ ? eng_.sx_in_buf() : send_sx_arr_.mutable_data();
+        float* ssy = use_direct_in_ ? eng_.sy_in_buf() : send_sy_arr_.mutable_data();
         std::vector<float> send_ratio(new_nc, 1.0f);   // per-slot ratio (scatter order) for density ·ratio
         subcell_parent_.assign(new_nc, 0);   // per-(sub)cell parent active-cell index (0..nc-1)
         for (int i = 0; i < new_nc; ++i) {
@@ -425,18 +433,30 @@ public:
         // Allocate output buffers under the GIL (numpy alloc isn't safe without it).
         const py::ssize_t MM = (py::ssize_t)eng_.M();
         const py::ssize_t NN = (py::ssize_t)eng_.N();
-        auto density = py::array_t<float>({MM, NN});
+        // When skip_field_d2h_ is set (V35 / zero-copy backward reads the field
+        // straight off the device via latest_field_addrs), the HOST density AND
+        // field maps are vestigial — skip their M*N alloc AND the engine's memcpy
+        // into them (pass nullptr → scatter's `if (density_out)`/`if (field_x_out)`
+        // guards skip the copies). Return 1-element dummies so the returned tuple
+        // stays valid (the on-chip backward never reads them).
+        // NOTE: V35_DENSITY_CHK reads the host density and won't work under skip.
+        const bool skip_host_field = skip_field_d2h_ && !cpu_dct_;
+        auto density = skip_host_field ? py::array_t<float>(1)
+                                       : py::array_t<float>({MM, NN});
         py::array_t<float> fx_local, fy_local;
-        if (!cpu_dct_) {
+        if (!cpu_dct_ && !skip_host_field) {
             fx_local = py::array_t<float>({MM, NN});
             fy_local = py::array_t<float>({MM, NN});
+        } else if (skip_host_field) {
+            fx_local = py::array_t<float>(1);
+            fy_local = py::array_t<float>(1);
         }
 
-        float* dp  = density.mutable_data();
-        float* fxp = cpu_dct_ ? dp : fx_local.mutable_data();
-        float* fyp = cpu_dct_ ? nullptr : fy_local.mutable_data();
-        float* px_send = send_px_arr_.mutable_data();
-        float* py_send = send_py_arr_.mutable_data();
+        float* dp  = skip_host_field ? nullptr : density.mutable_data();
+        float* fxp = cpu_dct_ ? dp : (skip_host_field ? nullptr : fx_local.mutable_data());
+        float* fyp = cpu_dct_ ? nullptr : (skip_host_field ? nullptr : fy_local.mutable_data());
+        float* px_send = use_direct_in_ ? eng_.px_in_buf() : send_px_arr_.mutable_data();
+        float* py_send = use_direct_in_ ? eng_.py_in_buf() : send_py_arr_.mutable_data();
         const int new_nc_local = new_nc_;
         const int32_t* ix = src_idx_x_.data();
         const int32_t* iy = src_idx_y_.data();
@@ -463,8 +483,10 @@ public:
             auto _t1 = std::chrono::high_resolution_clock::now();
             fused_loop_ms = std::chrono::duration<double, std::milli>(_t1 - _t0).count();
 
+            const float* sx_send = use_direct_in_ ? eng_.sx_in_buf() : send_sx_arr_.data();
+            const float* sy_send = use_direct_in_ ? eng_.sy_in_buf() : send_sy_arr_.data();
             eng_.scatter(px_send, py_send,
-                         send_sx_arr_.data(), send_sy_arr_.data(),
+                         sx_send, sy_send,
                          new_nc_local,
                          dp, fxp, fyp, &t);
         }
@@ -522,9 +544,106 @@ public:
                                     subcell_parent_.data());
     }
 
+    // ── V21 "full" EF backward (base config; the validated chip-EF reference) ──
+    void configure_electric_force_full(
+        py::array_t<float, py::array::c_style | py::array::forcecast> ox_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> oy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> ratio_full,
+        py::array_t<int32_t, py::array::c_style | py::array::forcecast> sel_np,
+        int num_total_nodes,
+        float xl, float yl, float bsx, float bsy) {
+        const int num_active = static_cast<int>(sel_np.size());
+        if (num_active <= 0) {
+            throw std::invalid_argument(
+                "configure_electric_force_full: sel must be non-empty");
+        }
+        if (!ef_engine_) {
+            void* mesh_device = eng_.mesh_device_ptr();
+            if (!mesh_device) {
+                throw std::runtime_error("V19 mesh_device_ptr() is null");
+            }
+            ef_engine_ = std::make_unique<V21EFEngine>(
+                mesh_device, eng_.M(), eng_.N(), num_active, xl, yl, bsx, bsy);
+            ef_engine_->configure_with_sel(
+                ox_full.data(), oy_full.data(), nsx_full.data(), nsy_full.data(),
+                ratio_full.data(), sel_np.data(), num_active, num_total_nodes);
+            ef_engine_->prewarm();
+        } else {
+            ef_engine_->configure_with_sel(
+                ox_full.data(), oy_full.data(), nsx_full.data(), nsy_full.data(),
+                ratio_full.data(), sel_np.data(), num_active, num_total_nodes);
+        }
+    }
+    py::dict compute_electric_force_full(
+        py::array_t<float, py::array::c_style | py::array::forcecast> pos_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> fy_full,
+        py::array_t<float, py::array::c_style> grad_full) {
+        if (!ef_engine_) throw std::runtime_error(
+            "compute_electric_force_full: configure_electric_force_full() first");
+        EFTiming t{};
+        { py::gil_scoped_release rel;
+          ef_engine_->compute_from_full(pos_full.data(), fx_full.data(), fy_full.data(),
+                                        grad_full.mutable_data(), &t); }
+        py::dict td; td["h2d_pos_ms"]=t.h2d_pos_ms; td["h2d_field_ms"]=t.h2d_field_ms;
+        td["compute_ms"]=t.compute_ms; td["d2h_grad_ms"]=t.d2h_grad_ms;
+        td["total_ms"]=t.total_ms; td["launches"]=t.launches; return td;
+    }
+    py::dict compute_electric_force_full_chip(
+        py::array_t<float, py::array::c_style | py::array::forcecast> pos_full,
+        uint32_t fx_chip_addr, uint32_t fy_chip_addr,
+        py::array_t<float, py::array::c_style> grad_full) {
+        if (!ef_engine_) throw std::runtime_error(
+            "compute_electric_force_full_chip: configure_electric_force_full() first");
+        EFTiming t{};
+        { py::gil_scoped_release rel;
+          ef_engine_->compute_from_full_chip_fields(pos_full.data(), fx_chip_addr, fy_chip_addr,
+                                                    grad_full.mutable_data(), &t); }
+        py::dict td; td["h2d_pos_ms"]=t.h2d_pos_ms; td["h2d_field_ms"]=t.h2d_field_ms;
+        td["compute_ms"]=t.compute_ms; td["d2h_grad_ms"]=t.d2h_grad_ms;
+        td["total_ms"]=t.total_ms; td["launches"]=t.launches; return td;
+    }
+
+    // ── V35 fully-on-chip Forward-Grouped Halo-Tile EF backward ──
+    void configure_electric_force_v35(
+        py::array_t<float, py::array::c_style | py::array::forcecast> ox_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> oy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsx_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> nsy_full,
+        py::array_t<float, py::array::c_style | py::array::forcecast> ratio_full,
+        py::array_t<int32_t, py::array::c_style | py::array::forcecast> sel_np,
+        int num_total_nodes, float xl, float yl, float bsx, float bsy) {
+        const int num_active = static_cast<int>(sel_np.size());
+        if (num_active <= 0) throw std::invalid_argument("configure_electric_force_v35: empty sel");
+        if (!v35_engine_) {
+            void* md = eng_.mesh_device_ptr();
+            if (!md) throw std::runtime_error("V19 mesh_device_ptr() is null");
+            v35_engine_ = std::make_unique<v35ef::V35EFEngine>(md, eng_.M(), eng_.N(), num_active, xl, yl, bsx, bsy);
+        }
+        v35_engine_->configure_with_sel(ox_full.data(), oy_full.data(), nsx_full.data(),
+            nsy_full.data(), ratio_full.data(), sel_np.data(), num_active, num_total_nodes);
+    }
+    py::dict compute_electric_force_v35_chip(
+        py::array_t<float, py::array::c_style | py::array::forcecast> pos_full,
+        uint32_t fx_chip_addr, uint32_t fy_chip_addr,
+        py::array_t<float, py::array::c_style> grad_full) {
+        if (!v35_engine_) throw std::runtime_error("compute_electric_force_v35_chip: configure first");
+        (void)pos_full;
+        v35ef::V35Timing t{};
+        v35_engine_->set_geom_source(eng_.v31_geom_addr(), eng_.v31_geom_pg());
+        { py::gil_scoped_release rel;
+          v35_engine_->compute_from_chip(fx_chip_addr, fy_chip_addr, grad_full.mutable_data(), &t); }
+        py::dict td; td["count_ms"]=t.count_ms; td["plan_ms"]=t.plan_ms; td["place_ms"]=t.place_ms;
+        td["gather_ms"]=t.gather_ms; td["d2h_ms"]=t.d2h_ms; td["run_ms"]=t.gather_ms; td["total_ms"]=t.total_ms; return td;
+    }
+
 
 private:
     V19Engine eng_;
+    std::unique_ptr<V21EFEngine> ef_engine_;
+    std::unique_ptr<v35ef::V35EFEngine> v35_engine_;
     bool cpu_dct_ = false;
     py::array_t<float> fy_zero_arr_;   // pre-zeroed, reused across iters (CPU_DCT=1 only)
     double last_fused_loop_ms_ = 0.0;
@@ -545,6 +664,7 @@ private:
     py::array_t<float>   send_sy_arr_;
     py::array_t<float>   send_px_arr_;
     py::array_t<float>   send_py_arr_;
+    bool use_direct_in_ = false;   // write cell data straight into engine buffers (skip memcpy)
 
     bool skip_field_d2h_ = false;
 
@@ -628,5 +748,24 @@ PYBIND11_MODULE(v19_engine, m) {
              "Set to True when V21 EF will read fields from chip directly via "
              "latest_field_addrs(). Saves M*N*4*2 bytes of d2h per iter. The "
              "Python-side numpy arrays still get allocated but are not filled — "
-             "callers must NOT consume them when this flag is on.");
+             "callers must NOT consume them when this flag is on.")
+        .def("configure_electric_force_full", &V19EngineWrap::configure_electric_force_full,
+             "ox_full"_a, "oy_full"_a, "nsx_clamped_full"_a, "nsy_clamped_full"_a,
+             "ratio_full"_a, "sel"_a, "num_total_nodes"_a, "xl"_a, "yl"_a, "bsx"_a, "bsy"_a,
+             "Base V21 full-layout EF config (stores sel; engine does gather/scatter in C++).")
+        .def("compute_electric_force_full", &V19EngineWrap::compute_electric_force_full,
+             "pos_full"_a, "fx_full"_a, "fy_full"_a, "grad_full"_a,
+             "Per-iter V21 EF with full-layout host fields; writes -grad into grad_full[sel].")
+        .def("compute_electric_force_full_chip", &V19EngineWrap::compute_electric_force_full_chip,
+             "pos_full"_a, "fx_chip_addr"_a, "fy_chip_addr"_a, "grad_full"_a,
+             "Zero-copy-field V21 EF: reads fx/fy from chip DRAM (latest_field_addrs()).")
+        .def("configure_electric_force_v35", &V19EngineWrap::configure_electric_force_v35,
+             "ox_full"_a, "oy_full"_a, "nsx_full"_a, "nsy_full"_a, "ratio_full"_a,
+             "sel"_a, "num_total_nodes"_a, "xl"_a, "yl"_a, "bsx"_a, "bsy"_a,
+             "Configure the V35 fully-on-chip Forward-Grouped Halo-Tile backward engine.")
+        .def("compute_electric_force_v35_chip", &V19EngineWrap::compute_electric_force_v35_chip,
+             "pos_full"_a, "fx_chip_addr"_a, "fy_chip_addr"_a, "grad_full"_a,
+             "V35 fully-on-chip backward (count->plan->place->gather) reading the chip-DCT "
+             "field from DRAM (latest_field_addrs). Reads the forward V31_GEOM stash. "
+             "Writes raw force into grad_full[sel].");
 }

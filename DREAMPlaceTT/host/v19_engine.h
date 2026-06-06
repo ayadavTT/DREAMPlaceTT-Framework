@@ -112,6 +112,15 @@ public:
     // either way. Default: true (preserve existing behavior).
     void set_skip_field_d2h(bool skip) noexcept;
 
+    // Direct-fill input buffers (length = soa_padded cells, zeroed tail). If the
+    // caller writes the per-iter cell data straight into these and passes the
+    // same pointers to scatter(), the per-iter host→host memcpy is skipped.
+    float* px_in_buf() noexcept;
+    float* py_in_buf() noexcept;
+    float* sx_in_buf() noexcept;
+    float* sy_in_buf() noexcept;
+    uint32_t soa_padded() const noexcept;  // length of the input buffers (cells)
+
     // ── V31 forward-stash accessors (valid after the first scatter with V31_STASH=1).
     // The backward reads route_addr (per-core (cell,bin,area·2^16) records) +
     // rcount_addr (records/core). first_tile()[c]*1024 = core c's first cell id. ──

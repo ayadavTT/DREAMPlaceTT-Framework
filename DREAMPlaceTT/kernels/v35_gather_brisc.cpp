@@ -46,7 +46,6 @@ void kernel_main() {
     const InterleavedAddrGen<true> cg  = {.bank_base_address=grouped_base, .page_size=grouped_pg};
     const InterleavedAddrGen<true> oig = {.bank_base_address=oidx_base, .page_size=oidx_pg};
     (void)fy_base;
-    const uint32_t band_bytes = valid_cols * M * 4u;
     const uint32_t REC = 32u;                                     // 128 B V31 record
     const uint32_t chunk_bytes = chunk_batches * B * REC * 4u;
     const uint64_t my_cell_byte0 = (uint64_t)slice_first * 128u;  // flat offset (64-B aligned)
@@ -55,7 +54,11 @@ void kernel_main() {
     float *fieldx;
     { DeviceZoneScopedN("V35-LOADBAND");
       cb_reserve_back(CB_FIELDX,1); uint32_t lx=get_write_ptr(CB_FIELDX);
-      noc_async_read(fxg.get_noc_addr(0) + (uint64_t)col0*M*4u, lx, band_bytes);
+      // The field is page-interleaved (ONE page = M floats per x-bin) and striped
+      // across DRAM banks, so a single contiguous read from page 0 + col0*M reads
+      // garbage. Read page-by-page (x-bin col0+i → L1 offset i*M), like V21.
+      for (uint32_t i=0;i<valid_cols;++i)
+          noc_async_read(fxg.get_noc_addr(col0+i), lx + i*M*4u, M*4u);
       noc_async_read_barrier();
       fieldx=reinterpret_cast<float*>(lx);
       for (uint32_t i=valid_cols*M; i<band_cols*M+max_h+8u; ++i) fieldx[i]=0.f;
@@ -80,7 +83,11 @@ void kernel_main() {
 
         { DeviceZoneScopedN("V35-PREP");
           cb_reserve_back(CB_PX,max_k); cb_reserve_back(CB_PY,max_h); cb_reserve_back(CB_RATIO,1);
-          cb_reserve_back(CB_BASE,1); cb_reserve_back(CB_OIDX,1);
+          cb_reserve_back(CB_BASE,1);
+          // CB_OIDX is NOT flow-controlled: nothing pops it (the oib slot is drained
+          // straight to DRAM via noc_async_write below). Reserving/pushing it every
+          // batch with only 2 CB slots dead-locks at the 3rd batch (>2048 cells/core).
+          // Use it as a fixed L1 scratch instead — the write barrier serializes reuse.
           float* pxb=(float*)get_write_ptr(CB_PX);
           float* pyb=(float*)get_write_ptr(CB_PY);
           float* rab=(float*)get_write_ptr(CB_RATIO);
@@ -105,7 +112,7 @@ void kernel_main() {
           noc_async_write((uint32_t)oib, oig.get_noc_addr(my_core) + (uint64_t)b*B*4u, B*4u);
           noc_async_write_barrier();
           cb_push_back(CB_PX,max_k); cb_push_back(CB_PY,max_h); cb_push_back(CB_RATIO,1);
-          cb_push_back(CB_BASE,1); cb_push_back(CB_OIDX,1);
+          cb_push_back(CB_BASE,1);   // CB_OIDX intentionally not pushed (see above)
         }
 
         for (uint32_t k=0;k<max_k;++k) {

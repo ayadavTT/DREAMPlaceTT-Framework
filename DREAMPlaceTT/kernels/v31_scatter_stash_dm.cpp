@@ -196,7 +196,14 @@ void kernel_main() {
                     g[0] = cell_base + ci;     // active cell index (oidx)
                     g[1] = bxl_c;              // bin_xl global (band routes on this)
                     g[2] = byl_c;              // bin_yl
-                    g[5] = bin_area_bits;      // ratio = bin_area
+                    // word5 = ratio_c · bin_area so the V35 backward gather yields
+                    // DREAMPlace's exact force ratio_c·Σ(ovlp·f). The stashed px/py are
+                    // raw clamped overlaps (G-prescaled by sqrt(inv_bin_area), NO ratio),
+                    // so without the ratio_c factor here movable cells (ratio<1)
+                    // over-count by 1/ratio (varying per cell → grad cos≈0.93). Filler
+                    // cells have ratio=1 so were unaffected.
+                    if (do_ratio) { cv.u = bin_area_bits; cv.f *= ratio_l1[ci]; g[5] = cv.u; }
+                    else           { g[5] = bin_area_bits; }   // ratio = bin_area (no per-cell ratio)
                     uint32_t kc = 0u, hc = 0u;
                     if (bxl_u < nbx && byl_u < nby) {
                         if (geom_int) {

@@ -171,11 +171,22 @@ class ScatterTTNNClientInProcess:
         t0 = time.perf_counter()
         density, fx, fy, timing = self._engine.scatter_from_pos(pos_np)
         total_client_ms = (time.perf_counter() - t0) * 1000
+        if os.environ.get("V35_DENSITY_CHK") == "1":
+            self._last_density = np.array(density, copy=True)
 
         out_fx = torch.from_numpy(fx)
         out_fy = torch.from_numpy(fy)
         timing["total_client_ms"] = total_client_ms
         self._timings.append(timing)
+        if os.environ.get("FWD_TIMING") == "1":
+            _fn = getattr(self, "_fwd_dbg_n", 0); self._fwd_dbg_n = _fn + 1
+            if _fn % 50 == 0:
+                _dct = (timing.get('ttnn_upload_ms',0)+timing.get('ttnn_compute_ms',0)
+                        +timing.get('ttnn_download_ms',0))
+                print(f"[fwd_timing] iter~{_fn}: h2d={timing.get('h2d_ms',0):.3f} "
+                      f"scatter={timing.get('scatter_ms',0):.3f} "
+                      f"writeout={timing.get('gather_ms',0):.3f} DCT={_dct:.3f} "
+                      f"server={timing.get('total_server_ms',0):.3f}", flush=True)
         return out_fx, out_fy, timing
 
     # ── Per-iteration compute call ────────────────────────────────────────
@@ -253,6 +264,15 @@ class ScatterTTNNClientInProcess:
         # IPC-bucket keys stay 0.0 (the engine's pybind layer sets them).
         timing["total_client_ms"] = total_client_ms
         self._timings.append(timing)
+        if os.environ.get("FWD_TIMING") == "1":
+            _fn = getattr(self, "_fwd_dbg_n", 0); self._fwd_dbg_n = _fn + 1
+            if _fn % 50 == 0:
+                _dct = (timing.get('ttnn_upload_ms',0)+timing.get('ttnn_compute_ms',0)
+                        +timing.get('ttnn_download_ms',0))
+                print(f"[fwd_timing] iter~{_fn}: h2d={timing.get('h2d_ms',0):.3f} "
+                      f"scatter={timing.get('scatter_ms',0):.3f} "
+                      f"writeout={timing.get('gather_ms',0):.3f} DCT={_dct:.3f} "
+                      f"server={timing.get('total_server_ms',0):.3f}", flush=True)
         return out_fx, out_fy, timing
 
     # ── Stats (identical to IPC client) ───────────────────────────────────
@@ -297,6 +317,39 @@ def patch_dreamplace(container: str = "", ipc_dir: str = "",
     can drop us in. Reuses that module's _scatter_ttnn_forward by swapping
     its module-level `_client` reference to our in-process client.
     """
+    # ── SOLIDIFIED PRODUCTION PIPELINE: V19 scatter → TT DCT → V35 backward ──
+    # Lock the production configuration at the entry point so the density
+    # pipeline can ONLY run this path. Alternative forward modes (v6..v18),
+    # alternative backwards (v21/v29/v30/v31/fccs/cpu-grad), the CPU-side DCT,
+    # and every diagnostic check are disconnected by forcing/stripping their env
+    # gates here (their code remains in-tree but is now unreachable). Per-stage
+    # timing ([fwd_full]/[bwd_full]) is forced ON so it is ALWAYS recorded.
+    # Kept-optional knobs (not forced): TTNN_HIFI (DCT precision), TT_PROFILE_DUMP.
+    os.environ["GATHER_MODE"] = "v19"                       # forward scatter = V19 only
+    for _f in ("V21_EF", "V35_EF", "V31_STASH", "V31_GEOM", "V31_EF_GEOM",
+               "V19_SKIP_CELL_SORT", "FWD_TIMING", "V35_TIMING"):
+        os.environ[_f] = "1"                               # production path + timing always-on
+    for _f in ("CPU_DCT", "V29_EF", "V30_EF", "V31_EF", "FCCS_EF",
+               "V21_EF_USE_CPU_GRAD", "V21_EF_ZERO_COPY", "FCCS_HOST_FIELD",
+               "FCCS_TIMING", "V29_TIMING", "V35_DENSITY_CHK", "V35_GATHER_CHK",
+               "V35_GEOM_SCAN", "V35_STASH_CHK", "V35_VS_CPU", "V35_VS_V21",
+               "V35_ANOM", "V35_DIAG", "V35_DROP", "V21_EF_DIAG", "DENSITY_AUDIT",
+               "FCCS_DBG_PROD", "FCCS_GRAD_DIAG", "FOLD_TIME", "TTNN_DL_BENCH",
+               "DENSITY_DUMP_ITER", "DENSITY_DUMP_PATH", "EXPORT_DENSITY_PATH",
+               "EXPORT_POS_PATH", "EXPORT_ROUTE_BUF_PATH", "V14_BUCKET_CAP_OVERRIDE",
+               "V15_CAP_OVERRIDE", "V15_FORCE_NO_SPILL"):
+        os.environ.pop(_f, None)                           # disconnect alt modes + diagnostics
+    # DEBUG override (off by default): DBG_<NAME>=<val> forces env NAME=val through the
+    # lock — for isolation tests (e.g. DBG_V35_EF=0 DBG_V21_EF_USE_CPU_GRAD=1 = TT fwd + CPU bwd).
+    for _f in ("V35_EF", "V21_EF_USE_CPU_GRAD", "V21_EF_ZERO_COPY",
+               "V35_VS_CPU", "V35_DIAG", "V35_DROP",
+               "V35_GEOM_SCAN", "V35_STASH_CHK", "V35_VS_V21", "V35_ANOM"):
+        _dbg = os.environ.get("DBG_" + _f)
+        if _dbg is not None:
+            os.environ[_f] = _dbg
+    print("[scatter_ttnn_inprocess] PRODUCTION PIPELINE LOCKED: V19 scatter + TT DCT "
+          "+ V35 backward; timing always-on; alt modes/diagnostics disconnected", flush=True)
+
     import scatter_ttnn_client as _ipc_mod  # the existing client module
 
     global _client
@@ -443,6 +496,19 @@ def _install_v21_ef_backward() -> None:
                 )
                 print(f"[v21_ef_backward] V35 sub-cell map: nc(sel)={len(sel)} new_nc(sub)={len(_sel_sub)}", flush=True)
                 print("[v21_ef_backward] V35_EF=1: backward → V35 on-chip halo-tile gather", flush=True)
+                # V35 reads the field on-chip (via latest_field_addrs); the forward's
+                # host field download → ctx.field_map is vestigial. Skip it so the
+                # forward keeps the field on device (saves the M*N*4*2 d2h per iter).
+                try:
+                    if os.environ.get("DBG_NO_SKIP_FIELD") == "1":
+                        # keep the host field map populated so V35_VS_CPU/V21 grad
+                        # diagnostics have a valid reference (debug only).
+                        print("[v21_ef_backward] V35: field d2h KEPT (DBG_NO_SKIP_FIELD)", flush=True)
+                    else:
+                        engine.set_skip_field_d2h(True)
+                        print("[v21_ef_backward] V35: forward field d2h SKIPPED (field read on-chip)", flush=True)
+                except Exception as e:
+                    print(f"[v21_ef_backward] WARNING set_skip_field_d2h (V35): {e}", flush=True)
             # ── V31 no-host backward (reads forward stash) — opt-in via V31_EF=1 ──
             # Requires the forward to run with V31_STASH=1 (stashes px·py) and
             # V19_SKIP_CELL_SORT=1 (so scatter index == active cell index).
@@ -491,10 +557,12 @@ def _install_v21_ef_backward() -> None:
         # ctx.pos / field_map_* are CPU torch tensors. .numpy() is zero-copy
         # iff contiguous + matching dtype. We force float32 view via .to() ONLY
         # if the dtype isn't already float32 (cheap when it is).
+        _bt0 = time.perf_counter()   # backward per-iter wall-clock start
         pos_t = ctx.pos
         if pos_t.dtype != _torch.float32:
             pos_t = pos_t.to(_torch.float32)
         pos_np = pos_t.detach().contiguous().numpy()
+        _bt_pos = time.perf_counter()
 
         fx_t = ctx.field_map_x.detach().contiguous().view(-1)
         if fx_t.dtype != _torch.float32: fx_t = fx_t.to(_torch.float32)
@@ -502,10 +570,12 @@ def _install_v21_ef_backward() -> None:
         fy_t = ctx.field_map_y.detach().contiguous().view(-1)
         if fy_t.dtype != _torch.float32: fy_t = fy_t.to(_torch.float32)
         fy_np = fy_t.numpy()
+        _bt_field = time.perf_counter()
 
         out_torch = _state["out_torch"]
         out_torch.zero_()
         out_np = out_torch.numpy()  # zero-copy view
+        _bt_prep = time.perf_counter()   # pos copy + field copy + out-zero done
 
         # ── DIAGNOSTIC: dump raw V21 vs CPU force at iter V21_EF_DIAG_ITER ──
         # Uses grad_pos=ones so we compare raw FORCE (no upstream-grad scaling).
@@ -718,6 +788,355 @@ def _install_v21_ef_backward() -> None:
             _fx_addr, _fy_addr = engine.latest_field_addrs()
             ef_timing = engine.compute_electric_force_v35_chip(pos_np, _fx_addr, _fy_addr, out_np)
             out_np *= -1.0
+            # Always accumulate backward stage timing + register an end-of-run summary.
+            _eft = getattr(client, "_ef_timings", None)
+            if _eft is None:
+                _eft = []; client._ef_timings = _eft
+                import atexit as _atexit
+                def _stage_summary(_cl=client):
+                    import numpy as _n2
+                    def _med(rows, k):
+                        vs = [r[k] for r in rows if k in r]
+                        return float(_n2.median(vs)) if vs else 0.0
+                    fwd = getattr(_cl, "_timings", [])[4:] or getattr(_cl, "_timings", [])
+                    bwd = getattr(_cl, "_ef_timings", [])[4:] or getattr(_cl, "_ef_timings", [])
+                    print("\n==== TT per-iteration stage timing (median ms, warmup-4 dropped) ====", flush=True)
+                    if fwd:
+                        print(f"[FWD]  h2d={_med(fwd,'h2d_ms'):.3f}  scatter={_med(fwd,'scatter_ms'):.3f}  "
+                              f"DCT(up/comp/dn)={_med(fwd,'ttnn_upload_ms'):.3f}/{_med(fwd,'ttnn_compute_ms'):.3f}/{_med(fwd,'ttnn_download_ms'):.3f}  "
+                              f"fw_total={_med(fwd,'fw_ms'):.3f}  server={_med(fwd,'total_server_ms'):.3f}  client={_med(fwd,'total_client_ms'):.3f}  (n={len(fwd)})", flush=True)
+                    if bwd:
+                        print(f"[BWD-V35]  count={_med(bwd,'count_ms'):.3f}  plan={_med(bwd,'plan_ms'):.3f}  "
+                              f"place={_med(bwd,'place_ms'):.3f}  gather={_med(bwd,'gather_ms'):.3f}  "
+                              f"d2h={_med(bwd,'d2h_ms'):.3f}  bw_total={_med(bwd,'total_ms'):.3f}  (n={len(bwd)})", flush=True)
+                    if fwd and bwd:
+                        print(f"[TOTAL density-step/iter] ~{_med(fwd,'total_server_ms')+_med(bwd,'total_ms'):.3f} ms (fw_server + bw_total)", flush=True)
+                _atexit.register(_stage_summary)
+            _eft.append(ef_timing)
+            if os.environ.get("V35_VS_V21") == "1":
+                _it = _state.get("vv2_it", 0); _state["vv2_it"] = _it + 1
+                if _it == 20:
+                    try:
+                        v35 = out_np.astype(_np.float64).copy()
+                        v21 = _np.zeros_like(out_np)
+                        engine.compute_electric_force_full_chip(pos_np, _fx_addr, _fy_addr, v21)  # exact TT bwd, same field
+                        v21 = -v21.astype(_np.float64)   # full path returns -grad already; match v35 (-force) → negate
+                        nn = v35.shape[0]//2; nm = int(ctx.num_movable_nodes)
+                        for tag,lo,hi in [("mov-x",0,nm),("mov-y",nn,nn+nm)]:
+                            a=v35[lo:hi]; b=v21[lo:hi]; na_=float((a*a).sum())**.5; nb_=float((b*b).sum())**.5
+                            cos=float((a*b).sum())/(na_*nb_+1e-30); rel=float(((a-b)**2).sum())**.5/(nb_+1e-30)
+                            print(f"[v35_vs_v21] {tag}: |v35|={na_:.4e} |v21|={nb_:.4e} ratio={na_/(nb_+1e-30):.4f} cos={cos:.5f} relL2={rel:.4f}", flush=True)
+                        d = _np.abs(v35[:nn]-v21[:nn]); worst = _np.argsort(d)[-5:][::-1]
+                        g = engine.read_geom(); gf = g.view(_np.float32); ncell=g.shape[0]//32
+                        gid = g[0::32][:ncell]   # active cell -> node (oidx); but here gidx=active idx
+                        # build node->list of active cells (via sel = _state v35_sel_sub)
+                        sel = _state.get("v35_sel_sub")
+                        import collections as _c; node2cells=_c.defaultdict(list)
+                        if sel is not None:
+                            for ci in range(ncell):
+                                node2cells[int(sel[int(g[ci*32+0])]) if int(g[ci*32+0])<len(sel) else -1].append(ci)
+                        for ni in worst:
+                            cs = node2cells.get(int(ni), [])
+                            print(f"   node {ni}: v35=({v35[ni]:.2e},{v35[nn+ni]:.2e}) v21=({v21[ni]:.2e},{v21[nn+ni]:.2e}) #subcells={len(cs)}", flush=True)
+                            for ci in cs[:3]:
+                                b=ci*32
+                                print(f"      cell{ci}: bxl={g[b+1]} byl={g[b+2]} kc={g[b+3]} hc={g[b+4]} w5={gf[b+5]:.2f} px={[round(float(gf[b+6+j]),2) for j in range(min(int(g[b+3]),4))]}", flush=True)
+                    except Exception as _e:
+                        import traceback; print(f"[v35_vs_v21] failed: {_e}\n{traceback.format_exc()}", flush=True)
+            if os.environ.get("V35_ANOM") == "1":
+                _it = _state.get("an_it", 0); _state["an_it"] = _it + 1
+                if _it == 1:
+                    try:
+                        g = engine.read_geom(); gf = g.view(_np.float32)
+                        ncell = g.shape[0] // 32
+                        NBX = int(ctx.num_bins_x); NBY = int(ctx.num_bins_y)
+                        bxl = g[1::32][:ncell]; byl = g[2::32][:ncell]; kc = g[3::32][:ncell]; hc = g[4::32][:ncell]
+                        w5 = gf[5::32][:ncell]
+                        v = out_np.astype(_np.float64); nn = v.shape[0]//2
+                        mx = _np.abs(v); top = _np.argsort(mx)[-5:][::-1]
+                        print(f"[v35_anom] ncell={ncell} max|grad|={mx.max():.3e}  bxl>=NBX:{int((bxl>=NBX).sum())} byl>=NBY:{int((byl>=NBY).sum())} "
+                              f"kc>8:{int((kc>8).sum())} hc>8:{int((hc>8).sum())} w5<=0:{int((w5<=0).sum())} "
+                              f"w5_max={w5.max():.3e} w5_nan:{int(_np.isnan(w5).sum())} grad_nan:{int(_np.isnan(v).sum())}", flush=True)
+                        for ni in top:
+                            print(f"   node {ni}: grad={v[ni]:.3e}", flush=True)
+                    except Exception as _e:
+                        import traceback; print(f"[v35_anom] failed: {_e}\n{traceback.format_exc()}", flush=True)
+            if os.environ.get("V35_STASH_CHK") == "1":
+                _it = _state.get("sc_it", 0); _state["sc_it"] = _it + 1
+                if _it == 20:
+                    try:
+                        g = engine.read_geom(); gf = g.view(_np.float32)
+                        P = ctx.pos.detach().cpu().numpy(); NNn = P.shape[0]//2
+                        NSX = ctx.node_size_x_clamped.detach().cpu().numpy()
+                        NSY = ctx.node_size_y_clamped.detach().cpu().numpy()
+                        OX = ctx.offset_x.detach().cpu().numpy(); OY = ctx.offset_y.detach().cpu().numpy()
+                        xl=float(ctx.xl); yl=float(ctx.yl); bsx=float(ctx.bin_size_x); bsy=float(ctx.bin_size_y)
+                        def dp_ov(nx, ns, lo, bs):  # DREAMPlace bins + triangle overlaps
+                            bxl=int((nx-lo)/bs); bxh=int((nx+ns-lo)/bs)+1
+                            ov=[];
+                            for k in range(bxl,bxh):
+                                bl=lo+k*bs; ov.append(min(nx+ns,bl+bs)-max(nx,bl))
+                            return bxl, ov
+                        for rr in range(6):
+                            gi=g[rr*32+0]; b=rr*32
+                            nx=P[gi]+OX[gi]; ny=P[NNn+gi]+OY[gi]
+                            dbxl,dpx = dp_ov(nx,NSX[gi],xl,bsx); dbyl,dpy = dp_ov(ny,NSY[gi],yl,bsy)
+                            sk=g[b+3]; sh=g[b+4]
+                            print(f"cell{gi}: STASH bxl={g[b+1]} byl={g[b+2]} kc={sk} hc={sh} px={[round(float(gf[b+6+j]),3) for j in range(min(sk,4))]} py={[round(float(gf[b+14+j]),3) for j in range(min(sh,4))]}", flush=True)
+                            print(f"         DRMPL bxl={dbxl} byl={dbyl} kc={len(dpx)} hc={len(dpy)} px={[round(v,3) for v in dpx[:4]]} py={[round(v,3) for v in dpy[:4]]} nsx_cl={NSX[gi]:.1f} bsx={bsx:.1f}", flush=True)
+                    except Exception as _e:
+                        import traceback; print(f"[stash_chk] failed: {_e}\n{traceback.format_exc()}", flush=True)
+            if os.environ.get("V35_GEOM_SCAN") == "1":
+                _it = _state.get("gs_it", 0); _state["gs_it"] = _it + 1
+                if _it in (1, 20):
+                    try:
+                        g = engine.read_geom(); gf = g.view(_np.float32); ncell = g.shape[0]//32
+                        G = g.reshape(ncell, 32); GF = gf.reshape(ncell, 32)
+                        P = ctx.pos.detach().cpu().numpy(); NNn = P.shape[0]//2
+                        NSX = ctx.node_size_x_clamped.detach().cpu().numpy()
+                        NSY = ctx.node_size_y_clamped.detach().cpu().numpy()
+                        OX = ctx.offset_x.detach().cpu().numpy(); OY = ctx.offset_y.detach().cpu().numpy()
+                        xl=float(ctx.xl); yl=float(ctx.yl); bsx=float(ctx.bin_size_x); bsy=float(ctx.bin_size_y)
+                        NBX=int(ctx.num_bins_x); NBY=int(ctx.num_bins_y)
+                        s_bxl=G[:,1].astype(_np.int64); s_byl=G[:,2].astype(_np.int64)
+                        s_kc =G[:,3].astype(_np.int64); s_hc =G[:,4].astype(_np.int64)
+                        oidx = G[:,0].astype(_np.int64)    # stash word-0 = active cell index
+                        sel = _state.get("v35_sel_sub")    # active-cell index -> node index
+                        sel = _np.asarray(sel).astype(_np.int64) if sel is not None else None
+                        if sel is not None:
+                            okv = (oidx>=0)&(oidx<len(sel))
+                            node = _np.where(okv, sel[_np.where(okv,oidx,0)], -1)
+                        else:
+                            node = oidx; okv = (oidx>=0)&(oidx<NNn)
+                        valid = okv & (node>=0) & (node<NNn)
+                        gid = _np.where(valid, node, 0)    # node index (masked by `act`)
+                        nx = P[gid]+OX[gid]; ny = P[NNn+gid]+OY[gid]
+                        d_bxl=_np.floor((nx-xl)/bsx).astype(_np.int64)
+                        d_bxh=_np.floor((nx+NSX[gid]-xl)/bsx).astype(_np.int64)+1
+                        d_byl=_np.floor((ny-yl)/bsy).astype(_np.int64)
+                        d_byh=_np.floor((ny+NSY[gid]-yl)/bsy).astype(_np.int64)+1
+                        d_bxl=_np.clip(d_bxl,0,NBX-1); d_bxh=_np.clip(d_bxh,0,NBX)
+                        d_byl=_np.clip(d_byl,0,NBY-1); d_byh=_np.clip(d_byh,0,NBY)
+                        d_kc=d_bxh-d_bxl; d_hc=d_byh-d_byl
+                        act=valid&(s_kc>0)&(s_hc>0); na=int(act.sum())
+                        print(f"[geom_scan] iter{_it} ncell={ncell} active={na} pad/invalid={int((~valid).sum())} (NBX={NBX} bsx={bsx:.2f})", flush=True)
+                        for nm,sv,dv in [("bxl",s_bxl,d_bxl),("byl",s_byl,d_byl),("kc",s_kc,d_kc),("hc",s_hc,d_hc)]:
+                            d=(sv-dv)[act]; mm=int((d!=0).sum())
+                            u,c=_np.unique(d,return_counts=True)
+                            hist={int(k):int(v) for k,v in zip(u.tolist(),c.tolist()) if k!=0}
+                            print(f"  {nm}: mismatch={mm}/{na} ({100.0*mm/max(na,1):.1f}%)  (stash-dp) diffs: {dict(sorted(hist.items(), key=lambda kv:-kv[1])[:6])}", flush=True)
+                        scale=(bsx*bsy)**0.5
+                        sumpx=GF[:,6:14].sum(1)*scale; sumpy=GF[:,14:22].sum(1)*scale
+                        rx=sumpx[act]/_np.maximum(NSX[gid][act],1e-9); ry=sumpy[act]/_np.maximum(NSY[gid][act],1e-9)
+                        print(f"  sum(px)*scale / NSX_clamped: median={_np.median(rx):.4f} mean={_np.mean(rx):.4f} (1.0=correct, <1 near edges)", flush=True)
+                        print(f"  sum(py)*scale / NSY_clamped: median={_np.median(ry):.4f} mean={_np.mean(ry):.4f}", flush=True)
+                        # dense-center cells (bins near NBX/2) — the ones V35 over-counts
+                        cen=act & (_np.abs(s_bxl-NBX//2)<8) & (_np.abs(s_byl-NBY//2)<8)
+                        print(f"  dense-center cells (|bxl-{NBX//2}|<8): {int(cen.sum())}  kc mismatch there={int(((s_kc-d_kc)[cen]!=0).sum())}  px-ratio median={_np.median((sumpx[cen]/_np.maximum(NSX[gid][cen],1e-9))) if cen.sum() else float('nan'):.4f}", flush=True)
+                    except Exception as _e:
+                        import traceback; print(f"[geom_scan] failed: {_e}\n{traceback.format_exc()}", flush=True)
+            if os.environ.get("V35_GATHER_CHK") == "1":
+                _it = _state.get("gck_it", 0); _state["gck_it"] = _it + 1
+                if _it in (1,3,5,7,8,9,10,15,20,100):
+                    try:
+                        g = engine.read_geom(); gf = g.view(_np.float32); ncell=g.shape[0]//32
+                        G=g.reshape(ncell,32); GF=gf.reshape(ncell,32)
+                        NBX=int(ctx.num_bins_x); NBY=int(ctx.num_bins_y)
+                        sel=_np.asarray(_state["v35_sel_sub"]).astype(_np.int64)
+                        oidx=G[:,0].astype(_np.int64)
+                        okv=(oidx>=0)&(oidx<len(sel)); node=_np.where(okv,sel[_np.where(okv,oidx,0)],-1)
+                        s_bxl=G[:,1].astype(_np.int64); s_byl=G[:,2].astype(_np.int64)
+                        s_kc=G[:,3].astype(_np.int64); s_hc=G[:,4].astype(_np.int64)
+                        w5=GF[:,5].astype(_np.float64); PX=GF[:,6:14].astype(_np.float64); PY=GF[:,14:22].astype(_np.float64)
+                        fxf=ctx.field_map_x.detach().cpu().numpy().reshape(-1).astype(_np.float64)
+                        fyf=ctx.field_map_y.detach().cpu().numpy().reshape(-1).astype(_np.float64)
+                        v=out_np.astype(_np.float64); nn=v.shape[0]//2
+                        cnt=_np.bincount(node[okv&(node>=0)], minlength=nn)
+                        sub=_np.where(okv&(node>=0)&(s_kc>0)&(s_hc>0)
+                                      &(_np.abs(s_bxl-NBX//2)<16)&(_np.abs(s_byl-NBY//2)<16))[0]
+                        # FULL vectorized python gather over ALL cells, accumulated to nodes
+                        gx=_np.zeros(ncell); gy=_np.zeros(ncell)
+                        for k in range(8):
+                            kk=(k<s_kc)&(s_bxl+k<NBX)&(s_bxl+k>=0)
+                            for h in range(8):
+                                m=kk&(h<s_hc)&(s_byl+h<NBY)&(s_byl+h>=0)
+                                fi=_np.where(m,(s_bxl+k)*NBY+(s_byl+h),0)
+                                gx+=_np.where(m,PX[:,k]*PY[:,h]*fxf[fi],0.0)
+                                gy+=_np.where(m,PX[:,k]*PY[:,h]*fyf[fi],0.0)
+                        gx*=w5; gy*=w5
+                        m2=okv&(node>=0)
+                        py_gx=_np.bincount(node[m2],weights=gx[m2],minlength=nn)
+                        py_gy=_np.bincount(node[m2],weights=gy[m2],minlength=nn)
+                        # V35 out_np = -force ; python gx = +force → compare against -py_gx
+                        nm=int(ctx.num_movable_nodes)
+                        for tag,lo,hi,pyv,v35v in [("mov-x",0,nm,-py_gx,v[:nn]),("mov-y",0,nm,-py_gy,v[nn:])]:
+                            a=v35v[lo:hi]; b=pyv[lo:hi]
+                            na_=float((a*a).sum())**.5; nb_=float((b*b).sum())**.5
+                            cos=float((a*b).sum())/(na_*nb_+1e-30); rel=float(((a-b)**2).sum())**.5/(nb_+1e-30)
+                            print(f"[gather_chk FULL it={_it}] {tag}: |v35|={na_:.4e} |py|={nb_:.4e} ratio={na_/(nb_+1e-30):.4f} cos={cos:.6f} relL2={rel:.5f}", flush=True)
+                        # locate worst-deviating nodes (where V35 != python gather)
+                        d=_np.abs(v[:nm]-(-py_gx[:nm])); worst=_np.argsort(d)[-6:][::-1]
+                        for ni in worst:
+                            print(f"   node {ni}: v35={v[ni]:.3e} py={-py_gx[ni]:.3e} #records={int(cnt[ni])}", flush=True)
+                        # ── V35 vs CPU electric_force (raw, grad_pos=ones) — the grad that drives convergence ──
+                        try:
+                            import torch as _t, dreamplace.ops.electric_potential.electric_potential as _epc
+                            cpu=(-_epc.electric_potential_cpp.electric_force(
+                                _t.ones_like(grad_pos), ctx.num_bins_x, ctx.num_bins_y,
+                                ctx.num_movable_impacted_bins_x, ctx.num_movable_impacted_bins_y,
+                                ctx.num_filler_impacted_bins_x, ctx.num_filler_impacted_bins_y,
+                                ctx.field_map_x.view([-1]), ctx.field_map_y.view([-1]), ctx.pos,
+                                ctx.node_size_x_clamped, ctx.node_size_y_clamped,
+                                ctx.offset_x, ctx.offset_y, ctx.ratio,
+                                ctx.bin_center_x, ctx.bin_center_y, ctx.xl, ctx.yl, ctx.xh, ctx.yh,
+                                ctx.bin_size_x, ctx.bin_size_y, ctx.num_movable_nodes,
+                                ctx.num_filler_nodes)).detach().cpu().numpy().astype(_np.float64)
+                            for tag,lo,hi in [("mov-x",0,nm),("mov-y",nn,nn+nm),("fil/rest-x",nm,nn),("fil/rest-y",nn+nm,2*nn)]:
+                                a=v[lo:hi]; b=cpu[lo:hi]; na_=float((a*a).sum())**.5; nb_=float((b*b).sum())**.5
+                                cosv=float((a*b).sum())/(na_*nb_+1e-30); rel=float(((a-b)**2).sum())**.5/(nb_+1e-30)
+                                print(f"   V35 vs CPU(raw) {tag}: ratio={na_/(nb_+1e-30):.5f} cos={cosv:.6f} relL2={rel:.5f} |v35|={na_:.3e} |cpu|={nb_:.3e}", flush=True)
+                            # WORST per-element V35-vs-CPU deviations (real corruption vs uniform fp32?)
+                            dvc=_np.abs(v-cpu); wvc=_np.argsort(dvc)[-8:][::-1]
+                            for idx in wvc:
+                                nidx=int(idx%nn); comp='x' if idx<nn else 'y'
+                                region='mov' if nidx<nm else 'fil/fix'
+                                print(f"   WORST v35-vs-cpu node{nidx}.{comp} ({region}): v35={v[idx]:.4e} cpu={cpu[idx]:.4e} absdiff={dvc[idx]:.4e}", flush=True)
+                            # split by records-per-node (cnt): single vs multi-record (sub-cells)
+                            cm=cnt[:nm]
+                            uq,uc=_np.unique(cm,return_counts=True)
+                            print(f"   movable node record-count histogram (cnt:#nodes): {dict((int(k),int(v)) for k,v in zip(uq.tolist(),uc.tolist()))}", flush=True)
+                            for nmlbl,msk in [("cnt==1",cm==1),("cnt>=2",cm>=2),("cnt==0",cm==0)]:
+                                if msk.sum()==0: continue
+                                a=v[:nm][msk]; b=cpu[:nm][msk]; na_=float((a*a).sum())**.5; nb_=float((b*b).sum())**.5
+                                print(f"      {nmlbl} ({int(msk.sum())} nodes): V35/CPU ratio={na_/(nb_+1e-30):.4f} |V35|={na_:.3e} |CPU|={nb_:.3e}", flush=True)
+                            # python(stash) vs CPU(raw): isolates stash-geometry vs DREAMPlace-geometry
+                            pa=-py_gx[:nm]; pb=cpu[:nm]; pna=float((pa*pa).sum())**.5; pnb=float((pb*pb).sum())**.5
+                            print(f"   python(stash) vs CPU(raw) mov-x: ratio={pna/(pnb+1e-30):.5f} cos={float((pa*pb).sum())/(pna*pnb+1e-30):.6f} relL2={float(((pa-pb)**2).sum())**.5/(pnb+1e-30):.5f}", flush=True)
+                            # ── CRUCIAL: the ACTUAL final grad — out_np·grad_pos (full-V35) vs -electric_force(grad_pos) (v35kern_cpugrad) ──
+                            gp=grad_pos.detach().cpu().numpy().astype(_np.float64)
+                            print(f"   grad_pos: shape={tuple(grad_pos.shape)} min={gp.min():.4e} max={gp.max():.4e} mean={gp.mean():.4e} (scalar? {bool(_np.allclose(gp,gp.flat[0]))})", flush=True)
+                            cpug=(-_epc.electric_potential_cpp.electric_force(
+                                grad_pos, ctx.num_bins_x, ctx.num_bins_y,
+                                ctx.num_movable_impacted_bins_x, ctx.num_movable_impacted_bins_y,
+                                ctx.num_filler_impacted_bins_x, ctx.num_filler_impacted_bins_y,
+                                ctx.field_map_x.view([-1]), ctx.field_map_y.view([-1]), ctx.pos,
+                                ctx.node_size_x_clamped, ctx.node_size_y_clamped, ctx.offset_x, ctx.offset_y, ctx.ratio,
+                                ctx.bin_center_x, ctx.bin_center_y, ctx.xl, ctx.yl, ctx.xh, ctx.yh,
+                                ctx.bin_size_x, ctx.bin_size_y, ctx.num_movable_nodes, ctx.num_filler_nodes)).detach().cpu().numpy().astype(_np.float64)
+                            outf = (v*gp) if gp.shape==v.shape else (v*float(gp.flat[0]))   # full-V35 final = out_np·grad_pos
+                            for tag,lo,hi in [("mov-x",0,nm),("mov-y",nn,nn+nm)]:
+                                a=outf[lo:hi]; b=cpug[lo:hi]; na_=float((a*a).sum())**.5; nb_=float((b*b).sum())**.5
+                                print(f"   FINAL out_np·grad_pos vs -EF(grad_pos) {tag}: ratio={na_/(nb_+1e-30):.5f} cos={float((a*b).sum())/(na_*nb_+1e-30):.6f} relL2={float(((a-b)**2).sum())**.5/(nb_+1e-30):.5f}", flush=True)
+                        except Exception as _e2:
+                            import traceback; print(f"   [cpu-cmp] failed: {_e2}", flush=True)
+                        print(f"   (FULL: ratio/cos ≈1.0 ⇒ V35 grad == correct electric force; deviation ⇒ found the bug)", flush=True)
+                        # ── per-cell: WORST-mismatching cnt==1 cells, stash vs DREAMPlace ──
+                        try:
+                            mvalid=okv&(node>=0)&(node<nm)
+                            rec_of_node=_np.full(nm,-1,dtype=_np.int64)
+                            rec_of_node[node[mvalid]]=_np.where(mvalid)[0]
+                            if 'cpu' in dir():
+                                mism=_np.abs((-py_gx[:nm])-cpu[:nm]); mism[cnt[:nm]!=1]=-1.0
+                                worstn=_np.argsort(mism)[-6:][::-1]
+                                cand=[int(rec_of_node[nd]) for nd in worstn if rec_of_node[nd]>=0]
+                            else:
+                                cand=[]
+                            P=ctx.pos.detach().cpu().numpy(); NNn=P.shape[0]//2
+                            NSX=ctx.node_size_x_clamped.detach().cpu().numpy(); NSY=ctx.node_size_y_clamped.detach().cpu().numpy()
+                            OX=ctx.offset_x.detach().cpu().numpy(); OY=ctx.offset_y.detach().cpu().numpy()
+                            RAT=ctx.ratio.detach().cpu().numpy()
+                            xl=float(ctx.xl); yl=float(ctx.yl); bsx=float(ctx.bin_size_x); bsy=float(ctx.bin_size_y); ba=bsx*bsy
+                            sc=ba**0.5
+                            def boxov(nx,ns,lo,bs,b0,kc):
+                                return [max(0.0,min(nx+ns,lo+(b0+k+1)*bs)-max(nx,lo+(b0+k)*bs)) for k in range(kc)]
+                            shown=0
+                            for c in cand[:6]:
+                                nd=int(node[c]); kc=int(s_kc[c]); hc=int(s_hc[c]); bx=int(s_bxl[c]); by=int(s_byl[c])
+                                pxs=[round(float(PX[c,k]*sc),3) for k in range(min(kc,5))]
+                                pys=[round(float(PY[c,h]*sc),3) for h in range(min(hc,5))]
+                                nx=P[nd]+OX[nd]; ny=P[NNn+nd]+OY[nd]
+                                dpx=[round(x,3) for x in boxov(nx,NSX[nd],xl,bsx,bx,min(kc,5))]
+                                dpy=[round(x,3) for x in boxov(ny,NSY[nd],yl,bsy,by,min(hc,5))]
+                                w5c=float(GF[c,5]); rstash=w5c/ba
+                                _pyf = -py_gx[nd] if nd<len(py_gx) else float('nan')
+                                _cpf = cpu[nd] if 'cpu' in dir() and nd<len(cpu) else float('nan')
+                                print(f"   cell node{nd}: STASH px={pxs} py={pys} ratio={rstash:.4f} | DRMPL px={dpx} py={dpy} ratio={float(RAT[nd]):.4f}  ||  py_gather={_pyf:.3e} cpu={_cpf:.3e} ratio={_pyf/(_cpf+1e-30):.3f}", flush=True)
+                                shown+=1
+                        except Exception as _e3:
+                            import traceback; print(f"   [px-chk] failed: {_e3}\n{traceback.format_exc()}", flush=True)
+                    except Exception as _e:
+                        import traceback; print(f"[gather_chk] failed: {_e}\n{traceback.format_exc()}", flush=True)
+            if os.environ.get("V35_DENSITY_CHK") == "1":
+                _it = _state.get("dc_it", 0); _state["dc_it"] = _it + 1
+                if _it in (1, 3, 5, 10, 20):
+                    try:
+                        ttd = getattr(client, "_last_density", None)
+                        g = engine.read_geom(); gf = g.view(_np.float32); ncell=g.shape[0]//32
+                        G=g.reshape(ncell,32); GF=gf.reshape(ncell,32)
+                        NBX=int(ctx.num_bins_x); NBY=int(ctx.num_bins_y)
+                        ba=float(ctx.bin_size_x)*float(ctx.bin_size_y)
+                        s_bxl=G[:,1].astype(_np.int64); s_byl=G[:,2].astype(_np.int64)
+                        s_kc=G[:,3].astype(_np.int64); s_hc=G[:,4].astype(_np.int64)
+                        w5=GF[:,5].astype(_np.float64); PX=GF[:,6:14].astype(_np.float64); PY=GF[:,14:22].astype(_np.float64)
+                        NB=NBX*NBY
+                        dens_r=_np.zeros(NB); dens_nr=_np.zeros(NB)   # with-ratio / no-ratio
+                        for k in range(8):
+                            kk=(k<s_kc)&(s_bxl+k<NBX)&(s_bxl+k>=0)
+                            for h in range(8):
+                                m=kk&(h<s_hc)&(s_byl+h<NBY)&(s_byl+h>=0)
+                                bi=_np.where(m,(s_bxl+k)*NBY+(s_byl+h),0)
+                                dens_r += _np.bincount(bi[m], weights=(w5*PX[:,k]*PY[:,h])[m], minlength=NB)
+                                dens_nr+= _np.bincount(bi[m], weights=(PX[:,k]*PY[:,h]*ba)[m], minlength=NB)
+                        print(f"[density_chk it={_it}] python density: max(with-ratio)={dens_r.max():.4g} max(no-ratio)={dens_nr.max():.4g} sum_r={dens_r.sum():.4g}", flush=True)
+                        if ttd is None:
+                            print("   [density_chk] TT density NOT captured (need it in call_from_pos)", flush=True)
+                        else:
+                            tt=_np.asarray(ttd).reshape(-1).astype(_np.float64)
+                            print(f"   TT density: shape={_np.asarray(ttd).shape} max={tt.max():.4g} sum={tt.sum():.4g} min={tt.min():.4g}", flush=True)
+                            # UNIT-INDEPENDENT overflow test: TT/ideal ratio at HOT bins vs COLD(median) bins.
+                            # If no overflow, ratio is a CONSTANT (just a unit scale). If hot bins wrap/saturate,
+                            # hot-ratio << cold-ratio. Use dens_r (ideal with-ratio density).
+                            for nm,dd in [("with-ratio",dens_r),("no-ratio",dens_nr)]:
+                                if tt.shape[0]!=dd.shape[0]: continue
+                                nz=_np.where(dd>1e-9)[0]
+                                if nz.size==0: continue
+                                order=nz[_np.argsort(dd[nz])]
+                                rr=tt/_np.maximum(dd,1e-12)
+                                hot=order[-200:]; mid=order[len(order)//2-100:len(order)//2+100]; cold=order[:200]
+                                print(f"   vs {nm}: TT/ideal ratio — HOT(top200) med={_np.median(rr[hot]):.5f}  MID med={_np.median(rr[mid]):.5f}  COLD(low200) med={_np.median(rr[cold]):.5f}", flush=True)
+                                print(f"        max ideal dens={dd.max():.4g} @bin{int(order[-1])}: TT there={tt[order[-1]]:.4g} (ideal {dd[order[-1]]:.4g})  ⇒ HOT/COLD ratio drop = {(_np.median(rr[hot])/(_np.median(rr[cold])+1e-30)):.4f} (1.0=no overflow, <1=overflow/wrap)", flush=True)
+                            # fixed-point ceiling check
+                            import math as _m
+                            sb=int(os.environ.get("V19_SCALE_BITS","20"))
+                            ceil_val=(2.0**32)/(2.0**sb)
+                            print(f"   V19 fixed-point ceiling (scale_bits={sb}) ≈ {ceil_val:.1f} density units; python max(no-ratio)={dens_nr.max():.4g}", flush=True)
+                    except Exception as _e:
+                        import traceback; print(f"[density_chk] failed: {_e}\n{traceback.format_exc()}", flush=True)
+            if os.environ.get("V35_VS_CPU") == "1":
+                _it = _state.get("vc_it", 0); _state["vc_it"] = _it + 1
+                if _it in (1, 20, 50):
+                    try:
+                        import dreamplace.ops.electric_potential.electric_potential as _epm9
+                        _cpu = (-_epm9.electric_potential_cpp.electric_force(
+                            grad_pos, ctx.num_bins_x, ctx.num_bins_y,
+                            ctx.num_movable_impacted_bins_x, ctx.num_movable_impacted_bins_y,
+                            ctx.num_filler_impacted_bins_x, ctx.num_filler_impacted_bins_y,
+                            ctx.field_map_x.view([-1]), ctx.field_map_y.view([-1]), ctx.pos,
+                            ctx.node_size_x_clamped, ctx.node_size_y_clamped,
+                            ctx.offset_x, ctx.offset_y, ctx.ratio,
+                            ctx.bin_center_x, ctx.bin_center_y, ctx.xl, ctx.yl, ctx.xh, ctx.yh,
+                            ctx.bin_size_x, ctx.bin_size_y, ctx.num_movable_nodes,
+                            ctx.num_filler_nodes)).detach().cpu().numpy().astype(_np.float64)
+                        v = out_np.astype(_np.float64); nn = v.shape[0]//2; nm = int(ctx.num_movable_nodes)
+                        def _s(lo, hi, tag):
+                            a = v[lo:hi]; b = _cpu[lo:hi]
+                            na_ = float((a*a).sum())**.5; nb_ = float((b*b).sum())**.5
+                            cosv = float((a*b).sum())/(na_*nb_+1e-30)
+                            rel = float(((a-b)**2).sum())**.5/(nb_+1e-30)
+                            print(f"[v35_vs_cpu it={_it}] {tag}: |v35|={na_:.4e} |cpu|={nb_:.4e} ratio={na_/(nb_+1e-30):.4f} cos={cosv:.5f} relL2={rel:.4f}", flush=True)
+                        _s(0, nm, "mov-x"); _s(nn, nn+nm, "mov-y"); _s(nm, nn, "fil-x")
+                    except Exception as _e:
+                        import traceback; print(f"[v35_vs_cpu] failed: {_e}\n{traceback.format_exc()}", flush=True)
             if os.environ.get("V35_TIMING") == "1":
                 _n = getattr(client, "_v35_dbg_n", 0); client._v35_dbg_n = _n + 1
                 if _n % 20 == 0:
@@ -775,12 +1194,36 @@ def _install_v21_ef_backward() -> None:
                 ctx.num_filler_nodes)
             return tuple([cpu_g] + [None] * 39)
 
+        _bt_eng = time.perf_counter()   # engine (V35 gather etc.) finished above
         # Final scaling by grad_pos. Cast to ctx.pos.dtype only if needed.
         if out_torch.dtype != ctx.pos.dtype:
             output = out_torch.to(ctx.pos.dtype)
         else:
             output = out_torch
         output = output.mul(grad_pos)
+        _bt_end = time.perf_counter()
+
+        # ── Fine-grained backward timing: every stage incl. host copies, so the
+        # pieces SUM to the per-iter backward wall (TOTAL). Gated by V35_TIMING.
+        if os.environ.get("V35_TIMING") == "1":
+            _bn = getattr(client, "_bwd_dbg_n", 0); client._bwd_dbg_n = _bn + 1
+            if _bn % 20 == 0:
+                _et = ef_timing if isinstance(ef_timing, dict) else {}
+                pos_cp = (_bt_pos   - _bt0)     * 1000.0
+                fld_cp = (_bt_field - _bt_pos)  * 1000.0
+                zero_t = (_bt_prep  - _bt_field)* 1000.0
+                eng_wall = (_bt_eng - _bt_prep) * 1000.0
+                scale_t = (_bt_end  - _bt_eng)  * 1000.0
+                total   = (_bt_end  - _bt0)     * 1000.0
+                eng_sum = (_et.get('count_ms',0)+_et.get('plan_ms',0)+_et.get('place_ms',0)
+                           +_et.get('gather_ms',0)+_et.get('d2h_ms',0))
+                eng_resid = eng_wall - eng_sum   # pybind marshalling + untimed engine
+                print(f"[bwd_full] iter~{_bn}: pos_cpy={pos_cp:.3f} field_cpy={fld_cp:.3f} "
+                      f"out_zero={zero_t:.3f} | engine[count={_et.get('count_ms',0):.3f} "
+                      f"plan={_et.get('plan_ms',0):.3f} place={_et.get('place_ms',0):.3f} "
+                      f"gather={_et.get('gather_ms',0):.3f} d2h={_et.get('d2h_ms',0):.3f} "
+                      f"pybind+resid={eng_resid:.3f}] eng_wall={eng_wall:.3f} "
+                      f"scale={scale_t:.3f} TOTAL={total:.3f} ms", flush=True)
 
         try:
             if client._timings:

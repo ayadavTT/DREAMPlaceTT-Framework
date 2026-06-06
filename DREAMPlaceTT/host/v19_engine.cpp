@@ -3057,12 +3057,28 @@ void V19Engine::Impl::scatter(const float* px_in, const float* py_in,
 
     // ── Replace shm pos reads with input pointer reads. ──
     int32_t nc_actual = std::min(nc_actual_in, NC_max);
-    std::memcpy(px.data(), px_in, (size_t)nc_actual * sizeof(float));
-    std::memcpy(py.data(), py_in, (size_t)nc_actual * sizeof(float));
-    std::memcpy(sx.data(), sx_in, (size_t)nc_actual * sizeof(float));
-    std::memcpy(sy.data(), sy_in, (size_t)nc_actual * sizeof(float));
+    // Skip the host→host copy when the caller wrote directly into our own input
+    // buffers (px_in_buf() etc.) — eliminates ~nc*16 bytes of memcpy per iter.
+    if (px_in != px.data()) std::memcpy(px.data(), px_in, (size_t)nc_actual * sizeof(float));
+    if (py_in != py.data()) std::memcpy(py.data(), py_in, (size_t)nc_actual * sizeof(float));
+    if (sx_in != sx.data()) std::memcpy(sx.data(), sx_in, (size_t)nc_actual * sizeof(float));
+    if (sy_in != sy.data()) std::memcpy(sy.data(), sy_in, (size_t)nc_actual * sizeof(float));
     // Tail beyond nc_actual stays 0 (vectors zero-init'd in ctor).
     {
+
+            // ── Measure the untimed per-iter prologue (px/py/sx/sy host memcpy
+            // at lines above + any setup) to attribute the "fold+oh" residual. ──
+            {
+                static const bool _prol_time =
+                    getenv("FOLD_TIME") && std::string(getenv("FOLD_TIME")) == "1";
+                if (_prol_time && (v11_iter_ % 50u) == 0u) {
+                    double _pm = ms_since(t_total_start);
+                    printf("[prologue] iter=%llu t_total_start->h2d = %.3f ms "
+                           "(incl px/py/sx/sy host memcpy, nc=%d)\n",
+                           (unsigned long long)v11_iter_, _pm, nc_actual);
+                    fflush(stdout);
+                }
+            }
 
             // ── H2D: upload cell positions ────────────────────────────────────
             auto ts = hrclock::now();
@@ -3682,7 +3698,19 @@ void V19Engine::Impl::scatter(const float* px_in, const float* py_in,
                     density_buf_tt = wrap_mesh_buf_as_tensor(density_buf, M, N);
                     density_buf_tt_ready = true;
                 }
+                auto _tfold = hrclock::now();
                 auto rho_folded = ttnn::add(density_buf_tt, id_cache_tt);
+                static const bool _fold_time =
+                    getenv("FOLD_TIME") && std::string(getenv("FOLD_TIME")) == "1";
+                if (_fold_time) {
+                    Finish(cq);                       // force the add to complete to time it
+                    double _fm = ms_since(_tfold);
+                    if ((v11_iter_ % 50u) == 0u) {
+                        printf("[fold_time] iter=%llu ttnn::add(fold)+Finish = %.3f ms\n",
+                               (unsigned long long)v11_iter_, _fm);
+                        fflush(stdout);
+                    }
+                }
 
                 field_direct = ttnn_solver.solve_device(
                                          std::move(rho_folded), field_x, field_y,
@@ -3869,6 +3897,11 @@ uint32_t V19Engine::latest_field_y_addr() const noexcept {
 void V19Engine::set_skip_field_d2h(bool skip) noexcept {
     impl_->ttnn_solver_.skip_field_d2h = skip;
 }
+float*   V19Engine::px_in_buf() noexcept { return impl_->px_.data(); }
+float*   V19Engine::py_in_buf() noexcept { return impl_->py_.data(); }
+float*   V19Engine::sx_in_buf() noexcept { return impl_->sx_.data(); }
+float*   V19Engine::sy_in_buf() noexcept { return impl_->sy_.data(); }
+uint32_t V19Engine::soa_padded() const noexcept { return impl_->soa_padded_; }
 uint32_t V19Engine::v31_route_addr()  const noexcept { return impl_->v31_route_buf_  ? (uint32_t)impl_->v31_route_buf_->address()  : 0u; }
 uint32_t V19Engine::v31_rcount_addr() const noexcept { return impl_->v31_rcount_buf_ ? (uint32_t)impl_->v31_rcount_buf_->address() : 0u; }
 uint32_t V19Engine::v31_geom_addr()   const noexcept { return impl_->v31_geom_buf_   ? (uint32_t)impl_->v31_geom_buf_->address()   : 0u; }

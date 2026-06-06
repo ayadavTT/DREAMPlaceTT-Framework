@@ -128,6 +128,8 @@ if(pybind11_FOUND)
     pybind11_add_module(v19_engine MODULE
         v19_engine.cpp
         v19_engine_pybind.cpp
+        v21_ef_engine.cpp
+        v35_ef_engine.cpp
     )
     target_link_libraries(v19_engine PUBLIC TT::Metalium)
     target_include_directories(v19_engine PRIVATE ${TT_TTNN_INCLUDES})
@@ -141,7 +143,7 @@ if(pybind11_FOUND)
         "DENSITY_KERNEL_DIR=\"${_FW_ROOT}/kernels/\""
     )
     set_target_properties(v19_engine PROPERTIES CXX_COMPILER_LAUNCHER "")
-    message(STATUS "Configured v19_engine pybind11 module (forward-only)")
+    message(STATUS "Configured v19_engine pybind11 module (forward + V35 backward)")
 else()
     message(STATUS "Skipping v19_engine pybind11 module: pybind11 not found "
                    "(pass -Dpybind11_DIR=<dp_env>/lib/python3.8/site-packages/pybind11/share/cmake/pybind11)")
