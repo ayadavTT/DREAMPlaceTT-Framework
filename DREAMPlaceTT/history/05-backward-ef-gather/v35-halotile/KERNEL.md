@@ -9,12 +9,39 @@
 
 ---
 
-## 1. Identity
+## ⚡ SHIPPED PRODUCTION STATUS (2026-06-06) — this section overrides the stale "microbench / not-live-wired" notes below
+
+V35 is now the **live production backward** (`--device scatter_ttnn_inprocess`, lock `V35_EF=1`).
+The microbench described below (`v35_host.cpp` + `v28_*` *verbatim*) was the bring-up prototype;
+the **shipped** path completed the "remaining steps" (on-chip grouping + live wiring):
+
+- **Shipped host:** `host/v35_ef_engine.cpp` → `compute_electric_force_v35_chip()` =
+  on-chip **count → (host plan) → place → gather → grad-unsort**.
+- **Shipped kernels** (in production `kernels/`, NOT this folder's `src/`): `v35_count.cpp`,
+  `v35_place.cpp`, `v35_gather_brisc.cpp` (BRISC, dedicated — replaces the v28_brisc prep) +
+  `v28_ncrisc.cpp` + `v28_compute.cpp`. (This folder's `src/` keeps the *prototype* v35_host +
+  v28 trio for the harness.)
+- **Three correctness fixes that made it converge (2026-06-06, all in the shipped kernels):**
+  1. `v35_gather_brisc` `CB_OIDX` (c_6) was pushed every batch but never consumed → 2-slot CB
+     dead-locked at batch 3. Dropped the vestigial flow-control (L1 scratch + direct DRAM drain).
+  2. `v35_gather_brisc` + `v28_ncrisc` field band was read as one contiguous block — wrong for
+     the page-interleaved multi-bank DRAM field (→ NaN grad). Now read **page-by-page**
+     (`get_noc_addr(col0+i)`), matching V21.
+  3. The per-cell `ratio_c` rides in the stash `word5 = ratio_c·bin_area` (the gather's px/py are
+     ratio-free clamped overlaps) — without it movable cells over-count by `1/ratio` (grad cos
+     0.93). With it, cos = 1.0; **16/18 sweep configs converge ≤0.07** (the 2 misses are physically
+     borderline — even exact fp64 CPU can't reach 0.07 for them).
+- See `../../../PIPELINE.md` for the full live pipeline + cost frontier (backward `d2h`
+  grad-unsort is the dominant residual).
+
+---
+
+## 1. Identity  *(historical — the prototype microbench; see SHIPPED note above for live status)*
 - **Stage:** backward-ef-gather
-- **Status:** VALIDATED (microbench, real silicon bh-38, 2026-06-03) — gather+adaptive-balance core; not yet live-wired.
-- **Lineage:** v28-ef-multibin (correct-all-grids SFPU gather, uniform-only microbench) + v30 adaptive slab balance → **THIS** (fixed L1-tiles + proportional core allocation = clustering-immune at all grids, cells whole). Supersedes **fccs** (field broadcast + int-BRISC MAC + streaming-sort → lost 5–13× at large grids).
-- **Source files:** `src/v35_host.cpp` (partition + harness, host); reuses `src/v28_brisc.cpp` (BRISC fx gather + prep), `src/v28_ncrisc.cpp` (NCRISC fy gather + band load), `src/v28_compute.cpp` (TRISC SFPU Σ px·py·f, 32 cells/op) **verbatim**.
-- **Activated by:** standalone harness `v35` (`history/harness`); not yet behind a live `*_EF` flag.
+- **Status:** SHIPPED + LIVE (production backward). [Originally VALIDATED as a gather+balance microbench, bh-38, 2026-06-03.]
+- **Lineage:** v28-ef-multibin (correct-all-grids SFPU gather, uniform-only microbench) + v30 adaptive slab balance → **THIS** (fixed L1-tiles + proportional core allocation = clustering-immune at all grids, cells whole) → shipped as on-chip count/place/gather via `v35_ef_engine`. Supersedes **fccs**.
+- **Source files (prototype, this folder):** `src/v35_host.cpp` (partition + harness, host); reuses `src/v28_brisc.cpp`, `src/v28_ncrisc.cpp`, `src/v28_compute.cpp`. **Shipped source:** see the SHIPPED note above.
+- **Activated by:** production lock `V35_EF=1` (`integration/scatter_ttnn_client_inprocess.py`). The standalone harness `v35`/`v35live` (`history/harness`) exercises the prototype + shipped kernels.
 
 ## 2. Problem & contract
 - **Computation:** density backward / electric force. Per cell `c`: `gx[c]=ratio·Σ_{k<kc,h<hc} px[c,k]·py[c,h]·fx[(bxl+k)·M+(byl+h)]`, same for `gy` with `fy`. Field is two column-major planes `fx,fy : [col·M + row]`, `N×M` bins.

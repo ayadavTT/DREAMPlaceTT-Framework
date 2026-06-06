@@ -1,51 +1,59 @@
-# host/
+# host/ — TT-Metal C++ host code
 
-C++ server that orchestrates the V11 pipeline. Runs inside the TT-Metal Docker container.
+Host programs that build/JIT-compile kernels and orchestrate the device. The **production
+density pipeline** is the in-process pybind engine `v19_engine`; the rest are the legacy
+IPC server, the microbench harness hosts, and alternative-backward engine variants.
 
-## Files
+> **Pipeline flow, per-stage cost, and the optimization frontier are in
+> [`../PIPELINE.md`](../PIPELINE.md).** This file is the host-dir inventory.
 
-- **`density_scatter_ttnn_server_host.cpp`** (~1700 LOC) — the server. Sets up DRAM buffers, builds and JIT-compiles kernel programs, owns the POSIX shmem IPC, dispatches one iteration per `state==GO` byte, returns `density / fx / fy` to the client.
-- **`v11_tile_ownership.h`** — pure-header utilities for tile→core mapping (snake-fill) and hot-tile sharding (`build_shard_table`). Used by the server.
-- **`CMakeLists.txt`** — find-package TT-Metalium, link `_ttnncpp.so` + `libtt_stl.so`, produce `density_scatter_ttnn_server`.
+## Production engine — `v19_engine` (the shipping path)
+Built as a **pybind11 module** that DREAMPlace imports in-process (no IPC server):
+- **`v19_engine.cpp`** (+ `v19_engine.h`) — forward engine: h2d → V19 L1-atomic scatter
+  (+V31 geom stash) → V11 accumulate → V19 writeout → fold fixed-macro `initial_density`
+  → TTNN DCT (`solve_device`) → electric field kept on-chip (`latest_field_addrs`).
+- **`v19_engine_pybind.cpp`** — the pybind surface: `scatter_from_pos`, direct-input
+  buffers, `set_skip_field_d2h`, `configure_electric_force_v35`,
+  `compute_electric_force_v35_chip`.
+- **`v35_ef_engine.cpp`** (+ `.h`) — V35 backward: count→(host plan)→place→gather→
+  grad-unsort (reads the on-chip field + V31 stash; the only host round-trip is the final
+  `grad[sel]` scatter).
 
-## Build
-
+Build it:
 ```bash
-bash scripts/build_server.sh
-# or manually:
-mkdir -p build && cd build
-cmake .. -DCMAKE_CXX_COMPILER=clang++-20 -DTT_METAL_HOME=$TT_METAL_HOME
-make -j$(nproc)
+cd host/build
+cmake .. -DCMAKE_CXX_COMPILER=clang++-20 -DTT_METAL_HOME=$TT_METAL_HOME   # first time
+ninja v19_engine        # produces v19_engine.cpython-*.so that DREAMPlace imports
 ```
+Kernels are JIT-loaded from `../kernels/` by path (`DENSITY_KERNEL_DIR`) — editing a
+kernel needs only a cache clear, not an engine rebuild. Rebuild the `.so` only when the
+engine `.cpp`/`.h` or its `CreateKernel`/`SetRuntimeArgs` wiring changes.
 
-Output: `host/build/density_scatter_ttnn_server`. Run inside the Docker container.
+(Note: `host/CMakeLists.txt` also still builds the legacy `density_scatter_ttnn_server`,
+and an in-comment label calls `v19_engine` "forward-only" — stale; it now links the V35
+backward engine too.)
 
-## Run signature
+## Other host programs in this dir (not the production path)
+- **`density_scatter_ttnn_server_host.cpp`** — the **legacy IPC server** (the old
+  architecture: POSIX-shmem IPC, polls a GO byte). Still builds; superseded by the
+  in-process `v19_engine`. Kept for reference.
+- **Microbench harness hosts** — `v25_ef_l1gather_host`, `v26_host`, `v27_host`, `v28_host`,
+  `v29_host`, `v30_host`, `fccs_host`, `v32_regroup_host`, `v31_backward_host`,
+  `atomic_bench_host`, `mcast_bw_host`, `v11op_bench_host`, `v19_microbench_host`,
+  `v35_host`, `v35live_host`, `v20_mb_permute_host`, `v21_electric_force_microbench_host`,
+  `v22_*_microbench_host`, `v32_e2e_host`. These are built + run by the **history harness**
+  (`../history/harness/CMakeLists.txt` + `run_harnesses.sh`), which loads kernels from its
+  own vendored `../history/harness/kernels/`. Use them to test a kernel in isolation.
+- **Alternative-backward engines** — `v21_ef_engine.cpp`, `v29_ef_engine.cpp`,
+  `v30_ef_engine.cpp`, `fccs_ef_engine.cpp`, `v22_engine.cpp` — engine variants exercised
+  by the harness / earlier experiments (V21 is the exact backward prewarmed in production).
+- **`v11_tile_ownership.h`** — tile→core (snake-fill) + hot-tile sharding helpers.
 
-The server is normally launched by `integration/scatter_ttnn_worker.py` (which is exec'd inside the container by `scatter_ttnn_client.py`). Direct invocation:
-
-```
-density_scatter_ttnn_server <M> <N> <NC_max> <ipc_dir> [xl yl xh yh]
-```
-
-It JIT-compiles kernels at startup, then polls `<ipc_dir>/scatter.shm` for state changes.
-
-## Key constants (top of `density_scatter_ttnn_server_host.cpp`)
-
-| Name | Value | Notes |
-|---|---|---|
-| `v11_max_per_page_tuples` | 4096 | Per (writer, receiver) page tuple cap. Split half/half between NCRISC and BRISC scatter. |
-| `MAX_OVERLAP` | 8 | Max bins one cell can overlap per axis (so 8×8 footprint). |
-| `MAX_K` | 8 | Max-way sharding for hot tiles. |
-| `HOT_THRESHOLD` | 5000 | Tiles with > N cells overlapping become hot at iter 0. |
-| `V11_CB_SLOT_HEADROOM` | 2*MAX_K = 16 | Reserve dense slots beyond `n_owned_max` for hot-tile shards. |
-| `V11_HIST_REFRESH_ITERS` | 1_000_000 | Histogram refresh disabled — see `docs/KNOWN_ISSUES.md` #2. |
-
-## Modifying the server
-
-Common changes:
-- **Pass an extra runtime arg to a kernel**: update `SetRuntimeArgs(prog, kernel_id, cc, {...})` and the kernel's `get_arg_val<uint32_t>(...)` reads.
-- **Add a new kernel**: `CreateKernel(prog, KDIR + "v11_yourname.cpp", all_crs, DataMovementConfig{...})`. Then `wl.add_program(...)`.
-- **Resize an L1 region**: update both the kernel's offset arithmetic AND the host's `v11_dense_offset_bytes` mirror calculation (line ~1052).
-
-After any change: `bash scripts/build_server.sh && bash scripts/run_smoke.sh`.
+## Modifying the production engine
+- **Pass a runtime arg to a kernel:** update `SetRuntimeArgs(prog, kernel_id, cc, {...})`
+  and the kernel's `get_arg_val<uint32_t>(...)`.
+- **Add a kernel:** put the `.cpp` in `../kernels/`, then `CreateKernel(... DENSITY_KERNEL_DIR
+  + "name.cpp" ...)` + its `CircularBufferConfig` + args in `v19_engine.cpp` (forward) or
+  `v35_ef_engine.cpp` (backward); rebuild the `.so`.
+- After any change: rebuild + quick `adaptec1_512` run (expect overflow ≈ 0.069) to confirm
+  convergence. Profile **watcher-off**.

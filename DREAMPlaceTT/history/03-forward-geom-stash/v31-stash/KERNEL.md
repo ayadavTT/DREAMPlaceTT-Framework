@@ -10,10 +10,11 @@
 
 ## 1. Identity
 - **Stage:** forward — geometry stash (prep-reuse enabler)
-- **Status:** ✓ VALIDATED + LIVE (converges; prep eliminated).
-- **Lineage:** V19 scatter (computes px·py, discards it) → **V31 stash (keeps it)** → consumed by V29/V31/FCCS backward (`bucket_only`, `compute_electric_force_v31`, FCCS `set_geom_source`).
-- **Source files:** `src/v31_scatter_stash_dm.cpp` (330, NCRISC), `src/v31_scatter_b_stash_dm.cpp` (289, BRISC).
-- **Activated by:** `V31_STASH=1` (+ `V31_GEOM=1`) on the V19 forward, via the engine.
+- **Status:** ✓ SHIPPED + LIVE — this is the **production forward scatter** (kernels live in `kernels/`, loaded by `host/v19_engine.cpp`).
+- **Lineage:** V19 scatter (computes px·py, discards it) → **V31 stash (keeps it)** → originally consumed by V29/V31/FCCS backward; **the production consumer is now the V35 halo-tile backward** (`v35_ef_engine` reads this stash for px/py/bxl/byl/ratio).
+- **Source files:** `src/v31_scatter_stash_dm.cpp` (NCRISC), `src/v31_scatter_b_stash_dm.cpp` (BRISC). Both also live in production `kernels/`.
+- **Activated by:** `V31_STASH=1` (+ `V31_GEOM=1`, `V31_EF_GEOM=1`) on the V19 forward — forced by the production lock.
+- **⚡ 2026-06-06 fix (required for V35 exactness):** the stash `word5` now carries **`ratio_c·bin_area`** (was `bin_area`). The stashed px/py are *ratio-free* clamped overlaps, so the per-cell density-preservation `ratio_c` must ride in word5 for the V35 gather to produce DREAMPlace's `ratio_c·Σ(ovlp·f)`. Without it, movable cells (ratio<1) over-count by `1/ratio` (grad cos 0.93 → stalls); with it, cos 1.0. Applied in BOTH `v31_scatter_stash_dm` (idx `ci`) and `v31_scatter_b_stash_dm` (idx `ci−TILE_ELEMS/2`). See `../../../PIPELINE.md` §2.
 
 ## 2. Problem & contract
 **Computation.** Same as V19 scatter (build density via atomic-add) **plus** write a per-cell geometry record `(cell_idx, bxl, byl, px·py area per bin)` into a DRAM stash buffer. **Inputs:** same as V19 (cells + v4_compute overlaps). **Output:** density (as V19) + the `V31_GEOM` stash at `eng_.v31_geom_addr()` (32 int words/record). **Invariants:** stash record format must match what the backward reads; 64-align.
