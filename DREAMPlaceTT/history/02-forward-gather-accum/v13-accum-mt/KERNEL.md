@@ -11,7 +11,7 @@
 - **Stage:** forward — density accumulate (FPU matmul)
 - **Status:** ✓ VALIDATED (converges within 0.13% of CPU @512 after the offset fix).
 - **Lineage:** V11 scalar accum → **V13_fpu (FPU matmul accum)** — uses the matmul/reduce engine instead of scalar adds. The `_mt` files are the shipped multithreaded versions (non-`_mt` were the single-thread bring-up).
-- **Source files:** `src/v13_accum_brisc_mt.cpp` (349), `src/v13_accum_compute_mt.cpp` (138, TRISC), `src/v13_accum_ncrisc_void.cpp` (15), `src/v13_llk_math_kaccum.h` (89, custom LLK).
+- **Source files:** `src/v13_accum_brisc_mt.cpp` (349), `src/v13_accum_compute_mt.cpp` (138, TRISC), `src/v13_accum_ncrisc_void.cpp` (15), `src/v13_llk_math_kaccum.h` (89, custom LLK). Single-thread bring-up predecessors (archived alongside): `src/v13_accum_brisc.cpp`, `src/v13_accum_compute.cpp`, `src/v13_accum_ncrisc.cpp`.
 - **Activated by:** `GATHER_MODE=v13_fpu` (IPC server path).
 
 ## 2. Problem & contract

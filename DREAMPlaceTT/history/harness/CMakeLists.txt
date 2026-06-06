@@ -21,7 +21,10 @@ find_package(TT-Metalium REQUIRED PATHS "${TT_BUILD}/lib/cmake/tt-metalium" NO_D
 
 get_filename_component(_DPTT "${CMAKE_SOURCE_DIR}/../.." ABSOLUTE)   # DREAMPlaceTT
 set(HOST "${_DPTT}/host")          # harness .cpp live here
-set(KDIR "${_DPTT}/kernels/")      # JIT kernel source dir
+# Self-contained: harness JIT kernels are vendored in this folder's kernels/
+# (copies of the archived experiments), so the microbenches stay runnable after
+# the production DREAMPlaceTT/kernels/ dir is pruned to the live set.
+set(KDIR "${CMAKE_SOURCE_DIR}/kernels/")   # vendored harness kernel source dir
 
 # Each harness = one standalone binary from one host .cpp. Pure TT-Metal
 # (no TTNN). DENSITY_KERNEL_DIR points at the in-folder kernels/.

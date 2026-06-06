@@ -13,7 +13,7 @@
 ## 1. Identity
 - **Stage:** infra — atomics probe (not a pipeline kernel)
 - **Status:** 🔧 INFRA (diagnostic; produced a foundational design rule).
-- **Source files:** `src/atomic_bench_brisc.cpp` (86), `src/atomic_bench_ncrisc.cpp` (11).
+- **Source files:** `src/atomic_bench_brisc.cpp` (86), `src/atomic_bench_ncrisc.cpp` (11). Related probe (archived alongside): `src/v31_atomic_probe.cpp` — a V31-era single-kernel atomic-increment probe used to re-confirm the same blind-count-vs-fetch-add behaviour against the V31 stash buffers.
 - **Activated by:** `host/atomic_bench_host.cpp` (target `atomic_bench_host`).
 
 ## 2. Problem & contract
