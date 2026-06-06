@@ -54,17 +54,17 @@ void kernel_main() {
         cb_wait_front(CB_BASE,1);
         const uint32_t* base_idx=reinterpret_cast<const uint32_t*>(get_read_ptr(CB_BASE));
         for (uint32_t k=0;k<max_k;++k) for (uint32_t h=0;h<max_h;++h) {
-            DeviceZoneScopedN("V28N-GATHER");
-            cb_reserve_back(CB_FY,1);
-            float* fyp=(float*)get_write_ptr(CB_FY);
-            const uint32_t kh=k*M+h;
-            for (uint32_t j=0;j<B;++j) fyp[j]=fieldy[base_idx[j]+kh];
-            cb_push_back(CB_FY,1);
+            { DeviceZoneScopedN("NB-FYRESV"); cb_reserve_back(CB_FY,1); }   // NCRISC blocked by SFPU (CB full) if large
+            { DeviceZoneScopedN("NB-FYFILL");                              // the actual fy-tile gather from L1 band
+              float* fyp=(float*)get_write_ptr(CB_FY);
+              const uint32_t kh=k*M+h;
+              for (uint32_t j=0;j<B;++j) fyp[j]=fieldy[base_idx[j]+kh];
+              cb_push_back(CB_FY,1); }
         }
         cb_pop_front(CB_BASE,1);
         // drain this batch's gx/gy (produced by the SFPU after consuming fx+fy)
-        { DeviceZoneScopedN("V28N-DRAIN");
-          cb_wait_front(GX,1); cb_wait_front(GY,1);
+        { DeviceZoneScopedN("NB-DRAINWAIT"); cb_wait_front(GX,1); cb_wait_front(GY,1); }  // NCRISC waiting for SFPU output → SFPU is the gate if large
+        { DeviceZoneScopedN("NB-DRAINWR");
           noc_async_write(get_read_ptr(GX), gx_page+(uint64_t)b*TILE_BYTES, TILE_BYTES);
           noc_async_write(get_read_ptr(GY), gy_page+(uint64_t)b*TILE_BYTES, TILE_BYTES);
           noc_async_write_barrier();

@@ -37,6 +37,8 @@ set(HARNESSES
     v28:v28_host.cpp
     v35:v35_host.cpp
     v35live:v35live_host.cpp
+    v35compact:v35compact_host.cpp
+    v35dual:v35dual_host.cpp
     v29:v29_host.cpp
     v30:v30_host.cpp
     fccs:fccs_host.cpp

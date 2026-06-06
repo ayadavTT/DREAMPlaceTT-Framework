@@ -1715,6 +1715,10 @@ V19Engine::Impl::Impl(int M, int N, int NC_max,
         }
         // ── V29 prep-reuse per-cell GEOMETRY stash (gated by V31_GEOM; needs V31_STASH) ──
         const bool use_v31_geom = use_v31_stash && (env_uint("V31_GEOM", 0u) != 0u);
+        // V35_STASH64: emit a 64 B compact geom record (px[8]+py[4]) instead of 128 B → halves
+        // the backward count/place DRAM read (forward+backward co-design). Valid when max_h<=4
+        // (all live configs; the backward asserts it). The forward writes py[0..3] only.
+        const uint32_t v31_geom64 = use_v31_geom && (env_uint("V35_STASH64", 0u) != 0u) ? 1u : 0u;
         uint32_t v31_geom_a = 0, v31_geom_pg = 0, v31_bin_area_bits = 0;
         // FCCS: stash px/py as int32 (×2^13) in the forward so the backward skips its
         // per-cell soft-float quantize (the dominant live wrapper overhead). V29 reads
@@ -1722,7 +1726,7 @@ V19Engine::Impl::Impl(int M, int N, int NC_max,
         const uint32_t v31_geom_int = (env_uint("V31_GEOM_INT", 0u) != 0u) ? 1u : 0u;
         if (use_v31_geom) {
             // Single flat-page buffer indexed by global active cell index (tile*1024+ci).
-            v31_geom_pg = soa_padded * 128u;                 // n_tiles_total*1024 records × 128 B
+            v31_geom_pg = soa_padded * (v31_geom64 ? 64u : 128u);   // 64 B compact (V35_STASH64) or 128 B records
             v31_geom_buf_ = make_buf(v31_geom_pg, v31_geom_pg);
             v31_geom_a = (uint32_t)v31_geom_buf_->address();
             v31_geom_pg_ = v31_geom_pg;
@@ -1798,6 +1802,7 @@ V19Engine::Impl::Impl(int M, int N, int NC_max,
                     brisc_args.push_back(v31_bin_area_bits);        // 34 bin_area bits
                     brisc_args.push_back(v31_geom_int);             // 35 stash px/py as int32 (×2^13)
                     brisc_args.push_back(v31_ratio_a_);             // 36 per-cell ratio buf (0=off, V31_EF_GEOM)
+                    brisc_args.push_back(v31_geom64);               // 37 emit 64 B compact geom record
                 } else {
                     brisc_args.push_back(0u);                       // 27 dram_dst (BRISC: unused)
                     brisc_args.push_back(0u);                       // 28 dram_pgsz
@@ -1852,6 +1857,7 @@ V19Engine::Impl::Impl(int M, int N, int NC_max,
                 ncrisc_args.push_back(v31_bin_area_bits);           // 38 bin_area bits
                 ncrisc_args.push_back(v31_geom_int);                // 39 stash px/py as int32 (×2^13)
                 ncrisc_args.push_back(v31_ratio_a_);                // 40 per-cell ratio buf (0=off, V31_EF_GEOM)
+                ncrisc_args.push_back(v31_geom64);                  // 41 emit 64 B compact geom record
             }
             SetRuntimeArgs(prog_v11_sc, sk_v11, cc, ncrisc_args);
         }

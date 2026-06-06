@@ -71,6 +71,7 @@ void kernel_main() {
     const uint32_t bin_area_bits       = get_arg_val<uint32_t>(38);  // ratio = bin_area float bits
     const uint32_t geom_int            = get_arg_val<uint32_t>(39);  // 1=stash px/py as int32 (×2^13) for FCCS
     const uint32_t ratio_base          = get_arg_val<uint32_t>(40);  // V31_EF_GEOM per-cell ratio (0=off); density area·ratio
+    const uint32_t geom64              = get_arg_val<uint32_t>(41);  // 1 = emit 64 B compact record (px[8]+py[4]); 0 = 128 B
     (void)my_core_id;
     constexpr float GEOM_WSCALE = 8192.0f;   // 2^13 (WS), matches the FCCS backward int compute
     const bool do_ratio = (ratio_base != 0u);
@@ -188,7 +189,26 @@ void kernel_main() {
                 //    out-of-grid cells → kc=hc=0 so the gather contributes 0 but the
                 //    oidx still maps to its own grad slot). px=ox, py=oy (already
                 //    G-PRESCALED by sqrt(inv_bin_area)); ratio=bin_area undoes it. ──
-                if (do_geom) {
+                if (do_geom && geom64) {
+                    // 64 B compact record (16 u32): [0]gidx [1]bxl [2]byl [3]word5
+                    //   [4..11]px[8] [12..15]py[4]. Drops kc/hc + padding + py[4..7]
+                    //   (zero when max_h<=4 — true for all live configs). No max_k/max_h
+                    //   needed in the forward: px is the full 8, py is capped at 4.
+                    union { float f; uint32_t u; } cv;
+                    uint32_t* g = geom + (uint32_t)ci * 16u;
+                    uint32_t bxl_c = (bxl_u < nbx) ? bxl_u : (nbx ? nbx - 1u : 0u);
+                    uint32_t byl_c = (byl_u < nby) ? byl_u : (nby ? nby - 1u : 0u);
+                    g[0] = cell_base + ci; g[1] = bxl_c; g[2] = byl_c;
+                    if (do_ratio) { cv.u = bin_area_bits; cv.f *= ratio_l1[ci]; g[3] = cv.u; }
+                    else           { g[3] = bin_area_bits; }
+                    if (bxl_u < nbx && byl_u < nby) {
+                        for (uint32_t j = 0; j < 8u; ++j) { cv.f = ox_data[j][ci]; g[4u + j] = cv.u; }
+                        for (uint32_t k = 0; k < 4u; ++k) { cv.f = oy_data[k][ci]; g[12u + k] = cv.u; }
+                    } else {
+                        for (uint32_t j = 0; j < 8u; ++j) g[4u + j] = 0u;
+                        for (uint32_t k = 0; k < 4u; ++k) g[12u + k] = 0u;
+                    }
+                } else if (do_geom) {
                     union { float f; uint32_t u; } cv;
                     uint32_t* g = geom + (uint32_t)ci * 32u;   // NCRISC: gi == ci (0..511)
                     uint32_t bxl_c = (bxl_u < nbx) ? bxl_u : (nbx ? nbx - 1u : 0u);
@@ -311,9 +331,10 @@ void kernel_main() {
         }
         // flush this tile-half's 512 per-cell geometry records (contiguous, cell-index order)
         if (do_geom) {
+            const uint32_t rb = geom64 ? 64u : 128u;
             noc_async_write((uint32_t)geom,
-                            geom_g.get_noc_addr(0) + (uint64_t)cell_base * 128u,
-                            (TILE_ELEMS / 2u) * 128u);
+                            geom_g.get_noc_addr(0) + (uint64_t)cell_base * rb,
+                            (TILE_ELEMS / 2u) * rb);
             noc_async_write_barrier();
         }
 

@@ -24,6 +24,7 @@
 #ifdef TRISC_MATH
 #include "llk_math_eltwise_ternary_sfpu_params.h"
 #endif
+#include "tools/profiler/kernel_profiler.hpp"
 
 #ifdef TRISC_MATH
 static constexpr uint32_t N = 32;
@@ -50,16 +51,16 @@ void kernel_main() {
         bool first=true;
         for (uint32_t k=0;k<max_k;++k) {
             for (uint32_t h=0;h<max_h;++h) {
-                cb_wait_front(FX,1); cb_wait_front(FY,1);
-                // w = px[k]·py[h]  → DST0
-                copy_tile_init(PX); copy_tile(PX,k,0);
-                copy_tile_init(PY); copy_tile(PY,h,1);
-                MATH((_llk_math_eltwise_ternary_sfpu_params_(face_mul,0,1,0,0,RC)));
-                // gx, gy accumulate
-                copy_tile_init(FX); copy_tile(FX,0,1);
-                MATH((_llk_math_eltwise_ternary_sfpu_params_(first?face_mul:face_fma,0,1,0,2,RC)));
-                copy_tile_init(FY); copy_tile(FY,0,1);
-                MATH((_llk_math_eltwise_ternary_sfpu_params_(first?face_mul:face_fma,0,1,0,3,RC)));
+                { DeviceZoneScopedN("CMP-WAIT");   // SFPU waiting for fx(BRISC)+fy(NCRISC) tiles → starved if large
+                  cb_wait_front(FX,1); cb_wait_front(FY,1); }
+                { DeviceZoneScopedN("CMP-MATH");   // the actual w=px·py; gx+=w·fx; gy+=w·fy
+                  copy_tile_init(PX); copy_tile(PX,k,0);
+                  copy_tile_init(PY); copy_tile(PY,h,1);
+                  MATH((_llk_math_eltwise_ternary_sfpu_params_(face_mul,0,1,0,0,RC)));
+                  copy_tile_init(FX); copy_tile(FX,0,1);
+                  MATH((_llk_math_eltwise_ternary_sfpu_params_(first?face_mul:face_fma,0,1,0,2,RC)));
+                  copy_tile_init(FY); copy_tile(FY,0,1);
+                  MATH((_llk_math_eltwise_ternary_sfpu_params_(first?face_mul:face_fma,0,1,0,3,RC))); }
                 first=false;
                 cb_pop_front(FX,1); cb_pop_front(FY,1);
             }
@@ -70,9 +71,11 @@ void kernel_main() {
         copy_tile_init(RATIO); copy_tile(RATIO,0,1);
         MATH((_llk_math_eltwise_ternary_sfpu_params_(face_mul,3,1,0,3,RC)));
         tile_regs_commit();
-        cb_reserve_back(GX,1); cb_reserve_back(GY,1); tile_regs_wait();
-        pack_reconfig_data_format(GX); pack_tile(2,GX);
-        pack_reconfig_data_format(GY); pack_tile(3,GY);
+        { DeviceZoneScopedN("CMP-OUTWAIT"); cb_reserve_back(GX,1); cb_reserve_back(GY,1); }  // wait for NCRISC to free gx/gy slots
+        tile_regs_wait();
+        { DeviceZoneScopedN("CMP-PACK");
+          pack_reconfig_data_format(GX); pack_tile(2,GX);
+          pack_reconfig_data_format(GY); pack_tile(3,GY); }
         tile_regs_release(); cb_push_back(GX,1); cb_push_back(GY,1);
         cb_pop_front(PX,max_k); cb_pop_front(PY,max_h); cb_pop_front(RATIO,1);
     }

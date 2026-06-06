@@ -68,6 +68,7 @@ void kernel_main() {
     const uint32_t bin_area_bits      = get_arg_val<uint32_t>(34);
     const uint32_t geom_int           = get_arg_val<uint32_t>(35);  // 1=stash px/py as int32 (×2^13)
     const uint32_t ratio_base         = get_arg_val<uint32_t>(36);  // V31_EF_GEOM per-cell ratio (0=off); density area·ratio
+    const uint32_t geom64             = get_arg_val<uint32_t>(37);  // 1 = emit 64 B compact record (px[8]+py[4]); 0 = 128 B
     constexpr float GEOM_WSCALE = 8192.0f;   // 2^13 (WS), matches FCCS backward
     const bool do_geom = (geom_base != 0u);
     const bool do_ratio = (ratio_base != 0u);
@@ -172,7 +173,24 @@ void kernel_main() {
                 uint32_t byl_u = (uint32_t)byl_i;
 
                 // ── GEOMETRY STASH (BRISC half): one complete per-cell record. ──
-                if (do_geom) {
+                if (do_geom && geom64) {
+                    // 64 B compact record (16 u32): [0]gidx [1]bxl [2]byl [3]word5
+                    //   [4..11]px[8] [12..15]py[4]. (See v31_scatter_stash_dm.cpp.)
+                    union { float f; uint32_t u; } cv;
+                    uint32_t* g = geom + (ci - TILE_ELEMS / 2u) * 16u;   // gi = ci-512 (0..511)
+                    uint32_t bxl_c = (bxl_u < nbx) ? bxl_u : (nbx ? nbx - 1u : 0u);
+                    uint32_t byl_c = (byl_u < nby) ? byl_u : (nby ? nby - 1u : 0u);
+                    g[0] = cell_base + ci; g[1] = bxl_c; g[2] = byl_c;
+                    if (do_ratio) { cv.u = bin_area_bits; cv.f *= ratio_l1[ci - TILE_ELEMS / 2u]; g[3] = cv.u; }
+                    else           { g[3] = bin_area_bits; }
+                    if (bxl_u < nbx && byl_u < nby) {
+                        for (uint32_t j = 0; j < 8u; ++j) { cv.f = ox_data[j][ci]; g[4u + j] = cv.u; }
+                        for (uint32_t k = 0; k < 4u; ++k) { cv.f = oy_data[k][ci]; g[12u + k] = cv.u; }
+                    } else {
+                        for (uint32_t j = 0; j < 8u; ++j) g[4u + j] = 0u;
+                        for (uint32_t k = 0; k < 4u; ++k) g[12u + k] = 0u;
+                    }
+                } else if (do_geom) {
                     union { float f; uint32_t u; } cv;
                     uint32_t* g = geom + (ci - TILE_ELEMS / 2u) * 32u;   // gi = ci-512 (0..511)
                     uint32_t bxl_c = (bxl_u < nbx) ? bxl_u : (nbx ? nbx - 1u : 0u);
@@ -278,9 +296,10 @@ void kernel_main() {
         }
         // flush this tile-half's 512 per-cell geometry records (cells [512,1024))
         if (do_geom) {
+            const uint32_t rb = geom64 ? 64u : 128u;
             noc_async_write((uint32_t)geom,
-                            geom_g.get_noc_addr(0) + (uint64_t)(cell_base + TILE_ELEMS / 2u) * 128u,
-                            (TILE_ELEMS / 2u) * 128u);
+                            geom_g.get_noc_addr(0) + (uint64_t)(cell_base + TILE_ELEMS / 2u) * rb,
+                            (TILE_ELEMS / 2u) * rb);
             noc_async_write_barrier();
         }
 
