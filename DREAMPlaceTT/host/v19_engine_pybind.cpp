@@ -36,6 +36,7 @@
 #include "v19_engine.h"
 #include "v21_ef_engine.h"
 #include "v35_ef_engine.h"
+#include "v22_engine.h"
 #include <tt-metalium/host_api.hpp>
 #include <tt-metalium/distributed.hpp>
 
@@ -639,11 +640,144 @@ public:
         td["gather_ms"]=t.gather_ms; td["d2h_ms"]=t.d2h_ms; td["run_ms"]=t.gather_ms; td["total_ms"]=t.total_ms; return td;
     }
 
+    // ── V22 optimizer-on-chip (combine→precond→nesterov→clamp) ──
+    // Shares the V19 mesh device (no second hardware open). Created lazily on
+    // the first v22_configure(). Arrays are length 2*num_nodes fp32, host layout
+    // [x_movable|x_fixed|x_filler | y_movable|y_fixed|y_filler] (DreamPlace pos order).
+    void v22_configure(
+        py::array_t<float, py::array::c_style | py::array::forcecast> lo,
+        py::array_t<float, py::array::c_style | py::array::forcecast> hi,
+        py::array_t<float, py::array::c_style | py::array::forcecast> pin_w,
+        py::array_t<float, py::array::c_style | py::array::forcecast> area,
+        int num_nodes) {
+        const py::ssize_t need = 2 * (py::ssize_t)num_nodes;
+        if (lo.size() < need || hi.size() < need || pin_w.size() < need || area.size() < need)
+            throw std::invalid_argument("v22_configure: lo/hi/pin_w/area must each have 2*num_nodes floats");
+        if (!v22_engine_) {
+            void* md = eng_.mesh_device_ptr();
+            if (!md) throw std::runtime_error("V19 mesh_device_ptr() is null");
+            v22_engine_ = std::make_unique<v22::V22OptEngine>(md, num_nodes);
+        }
+        v22_engine_->configure(lo.data(), hi.data(), pin_w.data(), area.data());
+        { py::gil_scoped_release rel; v22_engine_->prewarm(); }  // JIT the 4 programs now
+    }
+
+    // One full optimizer step (non-resident): upload grads+pos, run on device,
+    // download (u_new, v_new). u_new = unclamped u_kp1 (next u_k); v_new = clamped
+    // v_kp1 (next pos). Reproduces step_bb's update when fed raw_wl + density_grad +
+    // density_weight + precond_alpha(=PlaceObj.alpha) + step_size(BB) + coef.
+    py::tuple v22_step(
+        py::array_t<float, py::array::c_style | py::array::forcecast> wl_grad,
+        py::array_t<float, py::array::c_style | py::array::forcecast> density_grad,
+        py::array_t<float, py::array::c_style | py::array::forcecast> v_k,
+        py::array_t<float, py::array::c_style | py::array::forcecast> u_prev,
+        float step_size, float coef, float density_weight, float precond_alpha) {
+        if (!v22_engine_) throw std::runtime_error("v22_step: call v22_configure() first");
+        const int nn = v22_engine_->num_nodes();
+        const py::ssize_t need = 2 * (py::ssize_t)nn;
+        if (wl_grad.size() < need || density_grad.size() < need ||
+            v_k.size() < need || u_prev.size() < need)
+            throw std::invalid_argument("v22_step: array args must each have 2*num_nodes floats");
+        auto u_new = py::array_t<float>(need);
+        auto v_new = py::array_t<float>(need);
+        v22::OptTiming t{};
+        { py::gil_scoped_release rel;
+          v22_engine_->step(wl_grad.data(), density_grad.data(), v_k.data(), u_prev.data(),
+                            step_size, coef, density_weight, precond_alpha,
+                            u_new.mutable_data(), v_new.mutable_data(), &t); }
+        py::dict td; td["h2d_ms"]=t.h2d_ms; td["compute_ms"]=t.compute_ms;
+        td["d2h_ms"]=t.d2h_ms; td["total_ms"]=t.total_ms;
+        return py::make_tuple(u_new, v_new, td);
+    }
+
+    // Step B: on-device reduction → (ss, sy, yy) over s,y (each 2*num_nodes).
+    // Nesterov line-search step = sqrt(ss/yy); BB short = sy/yy.
+    py::tuple v22_stepsize_sums(
+        py::array_t<float, py::array::c_style | py::array::forcecast> s,
+        py::array_t<float, py::array::c_style | py::array::forcecast> y) {
+        if (!v22_engine_) throw std::runtime_error("v22_stepsize_sums: call v22_configure() first");
+        const py::ssize_t need = 2 * (py::ssize_t)v22_engine_->num_nodes();
+        if (s.size() < need || y.size() < need)
+            throw std::invalid_argument("v22_stepsize_sums: s,y must each have 2*num_nodes floats");
+        double ss = 0.0, sy = 0.0, yy = 0.0;
+        { py::gil_scoped_release rel;
+          v22_engine_->stepsize_sums(s.data(), y.data(), &ss, &sy, &yy); }
+        return py::make_tuple(ss, sy, yy);
+    }
+
+    // ── No-host wiring: route the V35 backward's on-chip unsort flush into V22's b_dg ──
+    // After this, the density gradient lands on-device in V22's b_dg every backward,
+    // with no CPU unsort / d2h (skip_cpu_unsort=True elides the host unsort entirely).
+    void v22_wire_density_grad(bool skip_cpu_unsort) {
+        if (!v22_engine_) throw std::runtime_error("v22_wire_density_grad: call v22_configure() first");
+        if (!v35_engine_) throw std::runtime_error("v22_wire_density_grad: V35 backward not configured yet");
+        v35_engine_->set_bdg_export(v22_engine_->density_grad_address(),
+                                    v22_engine_->density_grad_num_tiles(), skip_cpu_unsort);
+    }
+
+    // On-device combine + precond reading the resident b_dg (written by the unsort).
+    // Leaves g = precond(wl_grad + (-dw)*b_dg) in b_g2. Only wl_grad is uploaded.
+    void v22_combine_precond(
+        py::array_t<float, py::array::c_style | py::array::forcecast> wl_grad,
+        float density_weight, float precond_alpha) {
+        if (!v22_engine_) throw std::runtime_error("v22_combine_precond: call v22_configure() first");
+        if (wl_grad.size() < 2 * (py::ssize_t)v22_engine_->num_nodes())
+            throw std::invalid_argument("v22_combine_precond: wl_grad must have 2*num_nodes floats");
+        { py::gil_scoped_release rel;
+          v22_engine_->combine_precond_ondevice(wl_grad.data(), density_weight, precond_alpha); }
+    }
+    // Download the preconditioned combined gradient (b_g2) for validation.
+    py::array_t<float> v22_get_precond_grad() {
+        if (!v22_engine_) throw std::runtime_error("v22_get_precond_grad: call v22_configure() first");
+        auto out = py::array_t<float>(2 * (py::ssize_t)v22_engine_->num_nodes());
+        { py::gil_scoped_release rel; v22_engine_->get_precond_grad(out.mutable_data()); }
+        return out;
+    }
+
+    // ── No-host line-search loop surface ──
+    void v22_set_pos(py::array_t<float, py::array::c_style | py::array::forcecast> v_init) {
+        if (!v22_engine_) throw std::runtime_error("v22_set_pos: call v22_configure() first");
+        if (v_init.size() < 2 * (py::ssize_t)v22_engine_->num_nodes())
+            throw std::invalid_argument("v22_set_pos: v_init must have 2*num_nodes floats");
+        { py::gil_scoped_release rel; v22_engine_->set_pos(v_init.data()); }
+    }
+    py::array_t<float> v22_get_pos() {
+        if (!v22_engine_) throw std::runtime_error("v22_get_pos: call v22_configure() first");
+        auto out = py::array_t<float>(2 * (py::ssize_t)v22_engine_->num_nodes());
+        { py::gil_scoped_release rel; v22_engine_->get_pos(out.mutable_data()); }
+        return out;
+    }
+    void v22_snapshot_g() {
+        if (!v22_engine_) throw std::runtime_error("v22_snapshot_g: call v22_configure() first");
+        { py::gil_scoped_release rel; v22_engine_->snapshot_precond_grad(); }
+    }
+    void v22_nesterov_clamp_trial(float step_size, float coef) {
+        if (!v22_engine_) throw std::runtime_error("v22_nesterov_clamp_trial: call v22_configure() first");
+        { py::gil_scoped_release rel; v22_engine_->nesterov_clamp_trial(step_size, coef); }
+    }
+    py::tuple v22_linesearch_sums() {
+        if (!v22_engine_) throw std::runtime_error("v22_linesearch_sums: call v22_configure() first");
+        double ss = 0.0, yy = 0.0;
+        { py::gil_scoped_release rel; v22_engine_->linesearch_sums(&ss, &yy); }
+        return py::make_tuple(ss, yy);   // Σ(v_kp1-v_k)², Σ(g_kp1-g_k)²
+    }
+    void v22_commit_trial() {
+        if (!v22_engine_) throw std::runtime_error("v22_commit_trial: call v22_configure() first");
+        { py::gil_scoped_release rel; v22_engine_->commit_trial(); }
+    }
+    py::array_t<float> v22_get_trial_pos() {
+        if (!v22_engine_) throw std::runtime_error("v22_get_trial_pos: call v22_configure() first");
+        auto out = py::array_t<float>(2 * (py::ssize_t)v22_engine_->num_nodes());
+        { py::gil_scoped_release rel; v22_engine_->get_trial_pos(out.mutable_data()); }
+        return out;
+    }
+
 
 private:
     V19Engine eng_;
     std::unique_ptr<V21EFEngine> ef_engine_;
     std::unique_ptr<v35ef::V35EFEngine> v35_engine_;
+    std::unique_ptr<v22::V22OptEngine> v22_engine_;
     bool cpu_dct_ = false;
     py::array_t<float> fy_zero_arr_;   // pre-zeroed, reused across iters (CPU_DCT=1 only)
     double last_fused_loop_ms_ = 0.0;
@@ -767,5 +901,51 @@ PYBIND11_MODULE(v19_engine, m) {
              "pos_full"_a, "fx_chip_addr"_a, "fy_chip_addr"_a, "grad_full"_a,
              "V35 fully-on-chip backward (count->plan->place->gather) reading the chip-DCT "
              "field from DRAM (latest_field_addrs). Reads the forward V31_GEOM stash. "
-             "Writes raw force into grad_full[sel].");
+             "Writes raw force into grad_full[sel].")
+
+        .def("v22_configure", &V19EngineWrap::v22_configure,
+             "lo"_a, "hi"_a, "pin_w"_a, "area"_a, "num_nodes"_a,
+             "Create (lazily, sharing the V19 mesh device) + configure the V22 "
+             "optimizer-on-chip engine. lo/hi = clamp bounds; pin_w = sum_pin_weights; "
+             "area = node_areas — each length 2*num_nodes ([x|y], both halves duplicated "
+             "for pin_w/area). JITs the 4 programs (one-time ~5s).")
+        .def("v22_step", &V19EngineWrap::v22_step,
+             "wl_grad"_a, "density_grad"_a, "v_k"_a, "u_prev"_a,
+             "step_size"_a, "coef"_a, "density_weight"_a, "precond_alpha"_a,
+             "One on-device optimizer step: g=precond(wl_grad+density_weight*density_grad); "
+             "u_new=v_k-step_size*g; v_new=clamp(u_new+coef*(u_new-u_prev)). Returns "
+             "(u_new, v_new, timing). Reproduces NesterovAcceleratedGradientOptimizer.step_bb's "
+             "update (precond_alpha = PlaceObj.alpha, distinct from the BB step_size).")
+        .def("v22_stepsize_sums", &V19EngineWrap::v22_stepsize_sums,
+             "s"_a, "y"_a,
+             "On-device reduction over s,y (each 2*num_nodes): returns (ss, sy, yy) "
+             "= (Σs·s, Σs·y, Σy·y). Nesterov line-search step = sqrt(ss/yy); BB short = sy/yy.")
+        .def("v22_wire_density_grad", &V19EngineWrap::v22_wire_density_grad,
+             "skip_cpu_unsort"_a,
+             "Route the V35 backward's on-chip unsort flush into V22's b_dg (density grad "
+             "resident on-device, no CPU unsort/d2h). Call after v22_configure + the V35 "
+             "backward is configured. skip_cpu_unsort=True elides the host unsort entirely.")
+        .def("v22_combine_precond", &V19EngineWrap::v22_combine_precond,
+             "wl_grad"_a, "density_weight"_a, "precond_alpha"_a,
+             "On-device combine+precond reading the resident b_dg: g=precond(wl_grad+(-dw)*b_dg) "
+             "left in b_g2. Only wl_grad uploaded (the allowed h2d).")
+        .def("v22_get_precond_grad", &V19EngineWrap::v22_get_precond_grad,
+             "Download the preconditioned combined gradient (b_g2) for validation.")
+        .def("v22_set_pos", &V19EngineWrap::v22_set_pos, "v_init"_a,
+             "Seed the resident pos buffer (b_v) and u_k=v_k. Call once at loop start.")
+        .def("v22_get_pos", &V19EngineWrap::v22_get_pos,
+             "Download the resident pos (b_v).")
+        .def("v22_snapshot_g", &V19EngineWrap::v22_snapshot_g,
+             "Snapshot the preconditioned grad b_g2 -> b_g_k (g_k for the line search).")
+        .def("v22_nesterov_clamp_trial", &V19EngineWrap::v22_nesterov_clamp_trial,
+             "step_size"_a, "coef"_a,
+             "Trial nesterov+clamp using the g_k snapshot -> b_vclamp(v_kp1)/b_unew(u_kp1), "
+             "leaving resident v_k/u_k intact for backtracking.")
+        .def("v22_linesearch_sums", &V19EngineWrap::v22_linesearch_sums,
+             "On-device reduction: returns (Σ(v_kp1-v_k)², Σ(g_kp1-g_k)²) over resident "
+             "buffers. Nesterov line-search step = sqrt(ss/yy).")
+        .def("v22_commit_trial", &V19EngineWrap::v22_commit_trial,
+             "Commit the accepted trial: b_v<-b_vclamp, b_uprev<-b_unew.")
+        .def("v22_get_trial_pos", &V19EngineWrap::v22_get_trial_pos,
+             "Download the trial pos b_vclamp (v_kp1) for the host forward.");
 }

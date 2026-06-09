@@ -391,6 +391,14 @@ def patch_dreamplace(container: str = "", ipc_dir: str = "",
         # block (the engine is constructed lazily in start(), so _client._engine
         # is None here at patch time).
 
+    # ── V22 optimizer-on-chip patch (opt-in via V22_OPT=shadow|drive) ───────
+    # Routes the Nesterov position update (u_kp1/v_kp1/clamp) through the V22
+    # SFPU kernels so positions are updated ON the TT device. shadow = validate
+    # vs the host step_bb without driving; drive = let V22 produce the update.
+    if (os.environ.get("V22_OPT", "").lower() in ("shadow", "drive")
+            or os.environ.get("V22_NOHOST", "").lower() in ("shadow_grad", "drive")):
+        _install_v22_optimizer()
+
 
 def _install_v21_ef_backward() -> None:
     """Replace ElectricPotentialFunction.backward with one that calls the
@@ -1242,3 +1250,384 @@ def _install_v21_ef_backward() -> None:
     ep_mod.ElectricPotentialFunction.backward = _v21_ef_backward
     print("[scatter_ttnn_inprocess] V21_EF=1: Patched ElectricPotentialFunction.backward → "
           "V21 on-chip kernel (compute_from_full, prewarmed)", flush=True)
+
+
+def _install_v22_optimizer() -> None:
+    """Route the Nesterov optimizer's per-element position update through the V22
+    on-chip kernels (combine→precond→nesterov→clamp), so positions are updated ON
+    the TT device. Patches BOTH step_nobb (the DEFAULT path: use_bb=0, line search)
+    and step_bb, replacing ONLY the update site
+        u_kp1 = v_k - alpha*g_k ; v_kp1 = clamp(u_kp1 + coef*(u_kp1 - u_k))
+    with a V22 call; the surrounding state machine / line search is preserved verbatim.
+
+    V22_OPT:
+      "shadow" : compute the host update AND V22's, compare, USE the host result
+                 (zero convergence risk — validation only).
+      "drive"  : V22 produces u_kp1/v_kp1; the device update drives placement.
+
+    v1 milestone: feed V22 the post-precond g_k with an IDENTITY preconditioner
+    (pin_w = area = 0 → divisor max(0,1)=1) and density_grad = 0, so combine+precond
+    are exact no-ops and nesterov+clamp bit-reproduce the host update. (Real on-device
+    combine+precond fed by raw_wl + the on-chip-unsort b_dg is the later no-host upgrade.)
+    """
+    import numpy as _np
+    import torch as _torch
+    import scatter_ttnn_client as _ipc_mod
+    import NesterovAcceleratedGradientOptimizer as _nag
+
+    _mode = os.environ.get("V22_OPT", "").lower()           # "shadow" | "drive"
+    _ss_mode = os.environ.get("V22_STEPSIZE", "").lower()   # "" | "shadow" | "device" (Step B)
+    _nohost = os.environ.get("V22_NOHOST", "").lower()      # "" | "shadow_grad" | "drive" (no-host grad)
+    _cmp_every = int(os.environ.get("V22_OPT_CMP_EVERY", "20"))
+    _st = {"configured": False, "nn": 0, "step": 0,
+           "u_max": 0.0, "v_max": 0.0, "v_relmax": 0.0, "a_relmax": 0.0}
+
+    def _ensure_configured(opt, v_k):
+        if _st["configured"]:
+            return
+        engine  = _ipc_mod._client._engine
+        model   = opt.obj_and_grad_fn.__self__
+        placedb = model.placedb
+        dc      = model.data_collections
+        nn   = int(v_k.numel()) // 2
+        nmov = int(placedb.num_movable_nodes)
+        nfil = int(placedb.num_filler_nodes)
+        nsx = dc.node_size_x.detach().cpu().to(_torch.float32).contiguous().numpy()
+        nsy = dc.node_size_y.detach().cpu().to(_torch.float32).contiguous().numpy()
+        xl, yl = float(placedb.xl), float(placedb.yl)
+        xh, yh = float(placedb.xh), float(placedb.yh)
+        BIG = _np.float32(1e30)
+        # move_boundary clamps movable + filler (NOT fixed): x∈[xl, xh-nsx], y∈[yl, yh-nsy].
+        movfil = _np.zeros(nn, dtype=bool); movfil[:nmov] = True
+        if nfil > 0:
+            movfil[nn - nfil:] = True
+        lo = _np.empty(2 * nn, dtype=_np.float32)
+        hi = _np.empty(2 * nn, dtype=_np.float32)
+        lo[:nn] = _np.where(movfil, _np.float32(xl), -BIG)
+        hi[:nn] = _np.where(movfil, (float(xh) - nsx).astype(_np.float32), BIG)
+        lo[nn:] = _np.where(movfil, _np.float32(yl), -BIG)
+        hi[nn:] = _np.where(movfil, (float(yh) - nsy).astype(_np.float32), BIG)
+        if _nohost:
+            # No-host: V22 does the REAL precond on device, so it needs the real
+            # constants. precond_div = max(pin_w + alpha*dw*area, 1) per node, both halves.
+            pw_node = model.op_collections.pws_op(dc.net_weights).detach().cpu().to(_torch.float32).numpy()
+            ar_node = dc.node_areas.detach().cpu().to(_torch.float32).numpy()
+            pin_w = _np.empty(2 * nn, dtype=_np.float32); pin_w[:nn] = pw_node; pin_w[nn:] = pw_node
+            area  = _np.empty(2 * nn, dtype=_np.float32); area[:nn]  = ar_node; area[nn:]  = ar_node
+            _st["precond_div_node"] = None  # filled per-iter (depends on dw)
+            _st["pw_node"] = pw_node; _st["ar_node"] = ar_node
+        else:
+            pin_w = _np.zeros(2 * nn, dtype=_np.float32)        # identity precond (with-host drive)
+            area  = _np.zeros(2 * nn, dtype=_np.float32)
+        engine.v22_configure(lo, hi, pin_w, area, nn)
+        if _nohost:
+            # Route the V35 backward's on-chip unsort into V22's b_dg (grad resident).
+            # skip_cpu_unsort=True for drive (no host grad at all); False for shadow.
+            # The V35 engine is created lazily on the first backward — if it isn't up
+            # yet (drive calls this BEFORE the first eval), do a warmup eval to build it.
+            try:
+                engine.v22_wire_density_grad(_nohost == "drive")
+            except Exception:
+                opt.obj_and_grad_fn(v_k)                 # warmup: build the V35 backward engine
+                engine.v22_wire_density_grad(_nohost == "drive")
+            if _nohost == "drive":
+                engine.v22_set_pos(v_k.detach().cpu().to(_torch.float32).contiguous().numpy())
+        _st["configured"] = True; _st["nn"] = nn
+        print(f"[v22_opt] configured: mode={_mode} nohost={_nohost or 'off'} nn={nn} "
+              f"movable={nmov} filler={nfil} xl/yl/xh/yh={xl:.1f}/{yl:.1f}/{xh:.1f}/{yh:.1f} "
+              f"({'REAL precond + b_dg resident' if _nohost else 'identity precond'})", flush=True)
+
+    def _v22_update(opt, g_k, v_k, u_k, alpha, coef):
+        """Return (u_kp1, v_kp1_clamped) as torch CPU tensors, computed on device."""
+        engine = _ipc_mod._client._engine
+        model = opt.obj_and_grad_fn.__self__
+        try:
+            dw = float(model.density_weight.flatten()[0])
+        except Exception:
+            dw = float(model.density_weight)
+        nn = _st["nn"]
+        g_np = g_k.detach().cpu().to(_torch.float32).contiguous().numpy()
+        v_np = v_k.detach().cpu().to(_torch.float32).contiguous().numpy()
+        u_np = u_k.detach().cpu().to(_torch.float32).contiguous().numpy()
+        dg0  = _np.zeros(2 * nn, dtype=_np.float32)
+        u_new, v_new, _td = engine.v22_step(
+            g_np, dg0, v_np, u_np, float(alpha), float(coef), dw, 1.0)
+        return _torch.from_numpy(u_new), _torch.from_numpy(v_new)
+
+    def _record_cmp(tag, u_dev, u_ref, v_dev, v_ref):
+        du = float((u_dev - u_ref.detach().cpu()).abs().max())
+        dv = float((v_dev - v_ref.detach().cpu()).abs().max())
+        vscale = float(v_ref.detach().cpu().abs().max()) + 1e-30
+        _st["u_max"] = max(_st["u_max"], du)
+        _st["v_max"] = max(_st["v_max"], dv)
+        _st["v_relmax"] = max(_st["v_relmax"], dv / vscale)
+        if (_st["step"] % _cmp_every) == 0:
+            print(f"[v22_opt shadow:{tag}] step={_st['step']:4d}  "
+                  f"max|Δu|={du:.3e} max|Δv|={dv:.3e} (rel {dv/vscale:.2e})  "
+                  f"running max: u={_st['u_max']:.3e} v={_st['v_max']:.3e} "
+                  f"vrel={_st['v_relmax']:.2e}", flush=True)
+
+    # ── step_nobb (DEFAULT for our configs): line-search Nesterov ──
+    def _v22_step_nobb(self, closure=None):
+        loss = None
+        if closure is not None:
+            loss = closure()
+        for group in self.param_groups:
+            obj_and_grad_fn = self.obj_and_grad_fn
+            constraint_fn   = self.constraint_fn
+            for i, p in enumerate(group['params']):
+                if p.grad is None:
+                    continue
+                if not group['u_k']:
+                    group['u_k'].append(p.data.clone())
+                    group['v_k'].append(p)
+                    obj, grad = obj_and_grad_fn(group['v_k'][i])
+                    group['g_k'].append(grad.data.clone())
+                    group['obj_k'].append(obj.data.clone())
+                u_k = group['u_k'][i]; v_k = group['v_k'][i]
+                g_k = group['g_k'][i]; obj_k = group['obj_k'][i]
+                if not group['a_k']:
+                    group['a_k'].append(_torch.ones(1, dtype=g_k.dtype, device=g_k.device))
+                    group['v_k_1'].append(_torch.autograd.Variable(_torch.zeros_like(v_k), requires_grad=True))
+                    group['v_k_1'][i].data.copy_(group['v_k'][i] - group['lr'] * g_k)
+                    obj, grad = obj_and_grad_fn(group['v_k_1'][i])
+                    group['g_k_1'].append(grad.data)
+                    group['obj_k_1'].append(obj.data.clone())
+                a_k = group['a_k'][i]; v_k_1 = group['v_k_1'][i]
+                g_k_1 = group['g_k_1'][i]; obj_k_1 = group['obj_k_1'][i]
+                if not group['alpha_k']:
+                    group['alpha_k'].append((v_k - v_k_1).norm(p=2) / (g_k - g_k_1).norm(p=2))
+                alpha_k = group['alpha_k'][i]
+                if group['v_kp1'][i] is None:
+                    group['v_kp1'][i] = _torch.autograd.Variable(_torch.zeros_like(v_k), requires_grad=True)
+                v_kp1 = group['v_kp1'][i]
+                a_kp1 = (1 + (4 * a_k.pow(2) + 1).sqrt()) / 2
+                coef = (a_k - 1) / a_kp1
+                _ensure_configured(self, v_k)
+                # ── No-host grad SHADOW: validate V22's on-device combine+precond
+                #    (raw_wl + resident b_dg) reproduces DreamPlace's host g_k. b_dg holds
+                #    grad@v_k for steps>=1 (skip step 0: the BB init's v_k_1 eval leaves
+                #    b_dg at v_k_1). raw_wl via a separate WL-op backward. ──
+                if _nohost == "shadow_grad" and _st["step"] >= 1:
+                    engine = _ipc_mod._client._engine
+                    model = self.obj_and_grad_fn.__self__
+                    try:
+                        dw = float(model.density_weight.flatten()[0])
+                    except Exception:
+                        dw = float(model.density_weight)
+                    if v_k.grad is not None:
+                        v_k.grad.zero_()
+                    wl = model.op_collections.wirelength_op(v_k)
+                    wl.backward()
+                    raw_wl = v_k.grad.detach().cpu().to(_torch.float32).contiguous().numpy().copy()
+                    engine.v22_combine_precond(raw_wl, dw, 1.0)
+                    g_dev = _np.asarray(engine.v22_get_precond_grad(), dtype=_np.float32)
+                    g_host = g_k.detach().cpu().to(_torch.float32).contiguous().numpy()
+                    nn = _st["nn"]
+                    dgr = _np.abs(g_dev[:2*nn] - g_host[:2*nn]); sc = float(_np.abs(g_host).max()) + 1e-30
+                    grel = float(dgr.max()) / sc
+                    _st["a_relmax"] = max(_st["a_relmax"], grel)
+                    if (_st["step"] % _cmp_every) == 0:
+                        print(f"[v22_nohost shadow_grad] step={_st['step']:4d} dw={dw:.4e} "
+                              f"max|Δg|={float(dgr.max()):.3e} relΔ={grel:.3e} "
+                              f"(running max {_st['a_relmax']:.3e})", flush=True)
+                alpha_kp1 = 0
+                backtrack_cnt = 0
+                max_backtrack_cnt = 10
+                u_kp1 = None
+                while True:
+                    if _mode == "drive":
+                        u_kp1, v_dev = _v22_update(self, g_k, v_k, u_k, alpha_k, coef)
+                        v_kp1.data.copy_(v_dev)
+                    else:
+                        u_kp1 = v_k - alpha_k * g_k
+                        v_kp1.data.copy_(u_kp1 + coef * (u_kp1 - u_k))
+                        constraint_fn(v_kp1)
+                        u_dev, v_dev = _v22_update(self, g_k, v_k, u_k, alpha_k, coef)
+                        _record_cmp("nobb", u_dev, u_kp1, v_dev, v_kp1)
+                    f_kp1, g_kp1 = obj_and_grad_fn(v_kp1)
+                    # Nesterov line-search step: alpha = sqrt(Σ(Δv)² / Σ(Δg)²).
+                    alpha_kp1 = _torch.sqrt(_torch.sum((v_kp1.data - v_k.data) ** 2) /
+                                            _torch.sum((g_kp1.data - g_k.data) ** 2))
+                    # ── Step B: on-device reduction for the step size ──
+                    if _ss_mode in ("shadow", "device"):
+                        engine = _ipc_mod._client._engine
+                        s_np = (v_kp1.data - v_k.data).detach().cpu().to(_torch.float32).contiguous().numpy()
+                        y_np = (g_kp1.data - g_k.data).detach().cpu().to(_torch.float32).contiguous().numpy()
+                        ss, sy, yy = engine.v22_stepsize_sums(s_np, y_np)
+                        a_dev = float(_np.sqrt(ss / yy)) if yy > 0 else float(alpha_kp1)
+                        a_host = float(alpha_kp1)
+                        arel = abs(a_dev - a_host) / (abs(a_host) + 1e-30)
+                        _st["a_relmax"] = max(_st["a_relmax"], arel)
+                        if (_st["step"] % _cmp_every) == 0:
+                            print(f"[v22_opt stepsize:{_ss_mode}] step={_st['step']:4d} "
+                                  f"alpha host={a_host:.6e} dev={a_dev:.6e} relΔ={arel:.2e} "
+                                  f"(running max {_st['a_relmax']:.2e})", flush=True)
+                        if _ss_mode == "device":
+                            alpha_kp1 = _torch.tensor(a_dev, dtype=alpha_kp1.dtype, device=alpha_kp1.device)
+                    backtrack_cnt += 1
+                    group['obj_eval_count'] += 1
+                    if alpha_kp1 > 0.95 * alpha_k or backtrack_cnt >= max_backtrack_cnt:
+                        alpha_k.data.copy_(alpha_kp1.data)
+                        break
+                    else:
+                        alpha_k.data.copy_(alpha_kp1.data)
+                v_k_1.data.copy_(v_k.data)
+                g_k_1.data.copy_(g_k.data)
+                obj_k_1.data.copy_(obj_k.data)
+                u_k.data.copy_(u_kp1.data)
+                v_k.data.copy_(v_kp1.data)
+                g_k.data.copy_(g_kp1.data)
+                obj_k.data.copy_(f_kp1.data)
+                a_k.data.copy_(a_kp1.data)
+                _st["step"] += 1
+        return loss
+
+    # ── step_bb: Barzilai-Borwein Nesterov (only if use_bb=1) ──
+    def _v22_step_bb(self, closure=None):
+        loss = None
+        if closure is not None:
+            loss = closure()
+        for group in self.param_groups:
+            obj_and_grad_fn = self.obj_and_grad_fn
+            constraint_fn   = self.constraint_fn
+            for i, p in enumerate(group['params']):
+                if p.grad is None:
+                    continue
+                if not group['u_k']:
+                    group['u_k'].append(p.data.clone())
+                    group['v_k'].append(p)
+                u_k = group['u_k'][i]; v_k = group['v_k'][i]
+                obj_k, g_k = obj_and_grad_fn(v_k)
+                if not group['obj_k']:
+                    group['obj_k'].append(None)
+                group['obj_k'][i] = obj_k.data.clone()
+                if not group['a_k']:
+                    group['a_k'].append(_torch.ones(1, dtype=g_k.dtype, device=g_k.device))
+                    group['v_k_1'].append(_torch.autograd.Variable(_torch.zeros_like(v_k), requires_grad=True))
+                    group['v_k_1'][i].data.copy_(group['v_k'][i] - group['lr'] * g_k)
+                a_k = group['a_k'][i]; v_k_1 = group['v_k_1'][i]
+                obj_k_1, g_k_1 = obj_and_grad_fn(v_k_1)
+                if not group['obj_k_1']:
+                    group['obj_k_1'].append(None)
+                group['obj_k_1'][i] = obj_k_1.data.clone()
+                if group['v_kp1'][i] is None:
+                    group['v_kp1'][i] = _torch.autograd.Variable(_torch.zeros_like(v_k), requires_grad=True)
+                v_kp1 = group['v_kp1'][i]
+                if not group['alpha_k']:
+                    group['alpha_k'].append((v_k - v_k_1).norm(p=2) / (g_k - g_k_1).norm(p=2))
+                alpha_k = group['alpha_k'][i]
+                a_kp1 = (1 + (4 * a_k.pow(2) + 1).sqrt()) / 2
+                coef = (a_k - 1) / a_kp1
+                with _torch.no_grad():
+                    s_k = (v_k - v_k_1)
+                    y_k = (g_k - g_k_1)
+                    bb_short_step_size = (s_k.dot(y_k) / y_k.dot(y_k)).data
+                    lip_step_size      = (s_k.norm(p=2) / y_k.norm(p=2)).data
+                    step_size = bb_short_step_size if bb_short_step_size > 0 else min(lip_step_size, alpha_k)
+                _ensure_configured(self, v_k)
+                if _mode == "drive":
+                    u_kp1, v_dev = _v22_update(self, g_k, v_k, u_k, step_size, coef)
+                    v_kp1.data.copy_(v_dev)
+                else:
+                    u_kp1 = v_k - step_size * g_k
+                    v_kp1.data.copy_(u_kp1 + coef * (u_kp1 - u_k))
+                    constraint_fn(v_kp1)
+                    u_dev, v_dev = _v22_update(self, g_k, v_k, u_k, step_size, coef)
+                    _record_cmp("bb", u_dev, u_kp1, v_dev, v_kp1)
+                group['obj_eval_count'] += 1
+                v_k_1.data.copy_(v_k.data)
+                alpha_k.data.copy_(step_size.data)
+                u_k.data.copy_(u_kp1.data)
+                v_k.data.copy_(v_kp1.data)
+                a_k.data.copy_(a_kp1.data)
+                _st["step"] += 1
+        return loss
+
+    # ── No-host DRIVE line search: gradient resident in b_dg, on-device step size ──
+    # Replaces step_nobb's update entirely. Per step: V22 combine+precond(raw_wl + b_dg)
+    # -> g_k (snapshot); line search uses V22 nesterov/clamp into uncommitted buffers,
+    # the trial forward+backward (b_dg@v_kp1), V22 combine+precond -> g_kp1, and an
+    # on-device reduction for alpha = sqrt(Σ(Δpos)²/Σ(Δgrad)²); commit on accept.
+    # raw_wl = obj_and_grad_fn's (precond, density-zeroed) result un-preconditioned.
+    def _v22_nohost_step_nobb(self, closure=None):
+        loss = None
+        if closure is not None:
+            loss = closure()
+        engine = _ipc_mod._client._engine
+        for group in self.param_groups:
+            obj_and_grad_fn = self.obj_and_grad_fn
+            for i, p in enumerate(group['params']):
+                if p.grad is None:
+                    continue
+                v_k = p
+                model = self.obj_and_grad_fn.__self__
+                _ensure_configured(self, v_k)   # v22_configure + warmup + wire(skip_cpu) + set_pos (once)
+                nn = _st["nn"]
+                try:
+                    dw = float(model.density_weight.flatten()[0])
+                except Exception:
+                    dw = float(model.density_weight)
+                pdiv_node = _np.maximum(_st["pw_node"] + 1.0 * dw * _st["ar_node"], 1.0).astype(_np.float32)
+                pdiv = _np.concatenate([pdiv_node, pdiv_node])   # 2*nn, both halves
+                if not group['a_k']:
+                    group['a_k'].append(_torch.ones(1, dtype=v_k.dtype, device=v_k.device))
+                a_k = group['a_k'][i]
+                if not group['alpha_k']:
+                    lr0 = float(group['lr']) if float(group['lr']) > 0 else 1e-3
+                    group['alpha_k'].append(_torch.tensor(lr0, dtype=v_k.dtype, device=v_k.device))
+                alpha_k = group['alpha_k'][i]
+                a_kp1 = (1 + (4 * a_k.pow(2) + 1).sqrt()) / 2
+                coef = float((a_k - 1) / a_kp1)
+                # ── grad @ v_k: CARRIED from the previous step's last (accepted) trial —
+                #    raw_wl@v_k + the resident b_dg@v_k are already on hand, so NO re-eval
+                #    here (halves the density evals vs re-evaluating). The first step does
+                #    one init eval. raw_wl is dw-independent (un-preconditioned WL grad). ──
+                if _st.get("raw_wl_carried") is None:
+                    obj_k, g_ret = obj_and_grad_fn(v_k)   # init eval @ initial pos -> b_dg@v_k + raw_wl
+                    _st["raw_wl_carried"] = g_ret.detach().cpu().to(_torch.float32).contiguous().numpy() * pdiv
+                raw_wl = _st["raw_wl_carried"]
+                engine.v22_combine_precond(raw_wl, dw, 1.0)   # b_g2 = g_k = precond(raw_wl + dw*b_dg)
+                engine.v22_snapshot_g()                        # b_g_k = g_k
+                alpha = float(alpha_k)
+                backtrack = 0
+                while True:
+                    engine.v22_nesterov_clamp_trial(alpha, coef)        # b_vclamp=v_kp1, b_unew=u_kp1
+                    v_kp1 = engine.v22_get_trial_pos()                  # 2*nn numpy
+                    v_k.data.copy_(_torch.from_numpy(v_kp1))            # set p for the forward
+                    obj_kp1, g_ret1 = obj_and_grad_fn(v_k)             # forward@v_kp1 -> b_dg@v_kp1
+                    raw_wl1 = g_ret1.detach().cpu().to(_torch.float32).contiguous().numpy() * pdiv
+                    engine.v22_combine_precond(raw_wl1, dw, 1.0)       # b_g2 = g_kp1
+                    ss, yy = engine.v22_linesearch_sums()              # Σ(v_kp1-v_k)², Σ(g_kp1-g_k)²
+                    alpha_kp1 = float(_np.sqrt(ss / yy)) if yy > 0 else alpha
+                    backtrack += 1
+                    group['obj_eval_count'] += 1
+                    if alpha_kp1 > 0.95 * alpha or backtrack >= 10:
+                        alpha = alpha_kp1
+                        break
+                    alpha = alpha_kp1
+                _st["raw_wl_carried"] = raw_wl1   # raw_wl@(accepted v_kp1) = next step's v_k; b_dg already resident
+                engine.v22_commit_trial()    # b_v <- v_kp1, b_uprev <- u_kp1 (resident)
+                alpha_k.data.copy_(_torch.tensor(alpha, dtype=alpha_k.dtype, device=alpha_k.device))
+                a_k.data.copy_(a_kp1.data)
+                # NonLinearPlace reads optimizer.param_groups[0]["obj_k_1"][0] as the
+                # reported objective ("nesterov already computed the next step's obj").
+                if not group['obj_k_1']:
+                    group['obj_k_1'].append(None)
+                group['obj_k_1'][0] = obj_kp1.data.clone()
+                if (_st["step"] % _cmp_every) == 0:
+                    print(f"[v22_nohost drive] step={_st['step']:4d} dw={dw:.4e} alpha={alpha:.4e} "
+                          f"backtrack={backtrack} ss={ss:.3e} yy={yy:.3e}", flush=True)
+                _st["step"] += 1
+        return loss
+
+    if _nohost == "drive":
+        _nag.NesterovAcceleratedGradientOptimizer.step_nobb = _v22_nohost_step_nobb
+        _nag.NesterovAcceleratedGradientOptimizer.step_bb   = _v22_nohost_step_nobb
+        print("[v22_opt] patched step_nobb/step_bb -> V22 NO-HOST line search "
+              "(grad resident in b_dg, on-device alpha)", flush=True)
+    else:
+        _nag.NesterovAcceleratedGradientOptimizer.step_nobb = _v22_step_nobb
+        _nag.NesterovAcceleratedGradientOptimizer.step_bb   = _v22_step_bb
+        print(f"[v22_opt] patched NesterovAcceleratedGradientOptimizer.step_nobb + step_bb "
+              f"(mode={_mode}); active path follows use_bb", flush=True)

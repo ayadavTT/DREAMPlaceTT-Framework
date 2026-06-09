@@ -41,6 +41,15 @@ public:
     // Point at the forward's per-cell geometry stash (V31_GEOM, 128 B/cell, active order).
     void set_geom_source(uint32_t geom_addr, uint32_t geom_pg);
 
+    // No-host export: route the on-chip unsort's flush into an EXTERNAL b_dg buffer
+    // (e.g. V22's density_grad buffer) so the density gradient lands on-device with
+    // no CPU unsort / d2h. addr = DRAM base, ntiles = page count (page = 4096 B,
+    // interleaved [gx0,gy0,gx1,gy1,...]). skip_cpu_unsort = true skips the host
+    // d2h+unsort entirely (grad_full left untouched — caller must not rely on it).
+    // Pass addr=0 to disable. The on-chip unsort runs whenever this is set (or when
+    // V35_ONCHIP_UNSORT is in the env).
+    void set_bdg_export(uint32_t addr, uint32_t ntiles, bool skip_cpu_unsort);
+
     // One backward from the chip-DCT field in DRAM (host-free field): fx/fy column-major
     // [bxl*NBY + byl]. Writes -grad into grad_full[sel[i]] (caller pre-zeros). pos unused.
     void compute_from_chip(uint32_t fx_addr, uint32_t fy_addr, float* grad_full, V35Timing* t);

@@ -130,6 +130,7 @@ if(pybind11_FOUND)
         v19_engine_pybind.cpp
         v21_ef_engine.cpp
         v35_ef_engine.cpp
+        v22_engine.cpp
     )
     target_link_libraries(v19_engine PUBLIC TT::Metalium)
     target_include_directories(v19_engine PRIVATE ${TT_TTNN_INCLUDES})

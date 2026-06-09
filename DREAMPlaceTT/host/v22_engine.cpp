@@ -64,6 +64,18 @@ struct V22OptEngine::Impl {
     bool built_res = false;
     MeshWorkload wl_nesterov_res, wl_clamp_res;
 
+    // Step B: step-size reduction (ss/sy/yy over s,y).
+    std::shared_ptr<MeshBuffer> b_s, b_y, b_ssout;   // s, y inputs + nc*3 partial tiles
+    bool built_ss = false;
+    MeshWorkload wl_stepsize;
+    std::vector<int> ss_core_nt;                     // tiles/core (mask empty-core partials)
+
+    // No-host line-search machinery (all reuse combine/nesterov/clamp kernels).
+    std::shared_ptr<MeshBuffer> b_g_k;               // snapshot of preconditioned grad @ v_k
+    std::shared_ptr<MeshBuffer> s_neg1, s_zero;      // combine scalars: diff (-1) and copy (0)
+    bool built_nohost = false;
+    MeshWorkload wl_snap_gk, wl_diff_v, wl_diff_g, wl_nesterov_trial, wl_commit_v, wl_commit_u;
+
     // Host staging (avoid per-iter alloc)
     std::vector<float> stage;        // padded_elems
     std::vector<float> scalar_tile;  // TILE_ELEMS
@@ -96,6 +108,10 @@ struct V22OptEngine::Impl {
         b_pw = make_buf(io, TILE_BYTES);  b_area = make_buf(io, TILE_BYTES);
         s_dw = make_buf(TILE_BYTES, TILE_BYTES); s_adw  = make_buf(TILE_BYTES, TILE_BYTES);
         s_alpha = make_buf(TILE_BYTES, TILE_BYTES); s_coef = make_buf(TILE_BYTES, TILE_BYTES);
+        b_s = make_buf(io, TILE_BYTES); b_y = make_buf(io, TILE_BYTES);
+        b_ssout = make_buf((uint64_t)nc_all * 3u * TILE_BYTES, TILE_BYTES);
+        b_g_k = make_buf(io, TILE_BYTES);
+        s_neg1 = make_buf(TILE_BYTES, TILE_BYTES); s_zero = make_buf(TILE_BYTES, TILE_BYTES);
 
         stage.assign(padded_elems, 0.0f);
         scalar_tile.assign(TILE_ELEMS, 0.0f);
@@ -106,20 +122,29 @@ struct V22OptEngine::Impl {
         std::fflush(stdout);
     }
 
-    // Upload an array (length 2*nn, may be < padded) into a buffer (zero-padded).
+    // Upload an array (host layout [x(nn)|y(nn)]) into a buffer, INTERLEAVED on device
+    // ([x0,y0,x1,y1,...]) + zero-padded. Interleaving matches the on-chip unsort's b_dg
+    // layout; element-wise kernels are layout-agnostic so all operands share it.
+    // NOTE: `stage` / `scalar_tile` are SHARED host buffers reused across calls.
+    // step()/configure() upload several buffers back-to-back from them, so the
+    // write MUST be blocking — a non-blocking write returns before the host buffer
+    // is consumed, and the next upload() then overwrites it mid-DMA (a race that
+    // corrupted the larger configs' g_k/v_k/scalars → first-step blow-up to ~1e34).
     void upload(std::shared_ptr<MeshBuffer>& buf, const float* src) {
-        std::memcpy(stage.data(), src, (size_t)n_elems * sizeof(float));
+        const uint32_t nn = (uint32_t)num_nodes;
+        for (uint32_t i = 0; i < nn; ++i) { stage[2u*i] = src[i]; stage[2u*i+1u] = src[nn+i]; }
         if (padded_elems > n_elems)
             std::memset(stage.data() + n_elems, 0, (size_t)(padded_elems - n_elems) * sizeof(float));
-        EnqueueWriteMeshBuffer(*cq, buf, stage, false);
+        EnqueueWriteMeshBuffer(*cq, buf, stage, true);   // blocking: stage is reused next call
     }
     void upload_scalar(std::shared_ptr<MeshBuffer>& buf, float v) {
         std::fill(scalar_tile.begin(), scalar_tile.end(), v);
-        EnqueueWriteMeshBuffer(*cq, buf, scalar_tile, false);
+        EnqueueWriteMeshBuffer(*cq, buf, scalar_tile, true);   // blocking: scalar_tile reused
     }
-    void download(std::shared_ptr<MeshBuffer>& buf, float* dst) {
+    void download(std::shared_ptr<MeshBuffer>& buf, float* dst) {  // device interleaved -> host [x|y]
+        const uint32_t nn = (uint32_t)num_nodes;
         EnqueueReadMeshBuffer(*cq, stage, buf, true);
-        std::memcpy(dst, stage.data(), (size_t)n_elems * sizeof(float));
+        for (uint32_t i = 0; i < nn; ++i) { dst[i] = stage[2u*i]; dst[nn+i] = stage[2u*i+1u]; }
     }
 
     void make_cb(Program& prog, uint32_t idx, uint32_t n_slots) {
@@ -214,6 +239,41 @@ struct V22OptEngine::Impl {
         built = true;
     }
 
+    // Step B: per-core lane-wise reduction (ss/sy/yy) over s,y. reader streams the
+    // core's tile shard 3x (one per product); compute accumulates in DST; writer
+    // packs 3 partial tiles per core. Mirrors v22_stepsize_microbench_host.cpp.
+    void build_stepsize() {
+        if (built_ss) return;
+        Program prog = CreateProgram();
+        make_cb(prog, (uint32_t)CBIndex::c_0, 4);
+        make_cb(prog, (uint32_t)CBIndex::c_1, 4);
+        make_cb(prog, (uint32_t)CBIndex::c_16, 4);
+        auto rk = CreateKernel(prog, std::string(DENSITY_KERNEL_DIR) + "v22_stepsize_reader.cpp", all_crs,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_0, .noc = NOC::RISCV_0_default});
+        auto wk = CreateKernel(prog, std::string(DENSITY_KERNEL_DIR) + "v22_stepsize_writer.cpp", all_crs,
+            DataMovementConfig{.processor = DataMovementProcessor::RISCV_1, .noc = NOC::RISCV_1_default});
+        std::vector<UnpackToDestMode> um(64, UnpackToDestMode::Default);
+        um[0] = UnpackToDestMode::UnpackToDestFp32; um[1] = UnpackToDestMode::UnpackToDestFp32;
+        auto ck = CreateKernel(prog, std::string(DENSITY_KERNEL_DIR) + "v22_stepsize_compute.cpp", all_crs,
+            ComputeConfig{.fp32_dest_acc_en = true, .unpack_to_dest_mode = um, .math_approx_mode = false});
+        const uint32_t addr_s = (uint32_t)b_s->address();
+        const uint32_t addr_y = (uint32_t)b_y->address();
+        const uint32_t addr_o = (uint32_t)b_ssout->address();
+        ss_core_nt.assign(nc_all, 0);
+        for (int c = 0; c < nc_all; ++c) {
+            const uint32_t ts = std::min((uint32_t)c * tiles_per_core, n_tiles_total);
+            const uint32_t te = std::min(ts + tiles_per_core, n_tiles_total);
+            const uint32_t nt = te - ts;
+            ss_core_nt[c] = (int)nt;
+            CoreCoord cc{(uint32_t)(c % grid.x), (uint32_t)(c / grid.x)};
+            SetRuntimeArgs(prog, rk, cc, {nt, ts, addr_s, addr_y});
+            SetRuntimeArgs(prog, wk, cc, {(uint32_t)c * 3u, addr_o});
+            SetRuntimeArgs(prog, ck, cc, {nt});
+        }
+        wl_stepsize.add_program(device_range, std::move(prog));
+        built_ss = true;
+    }
+
     void build_all_resident() {
         build_all();  // combine + precond reused as-is (b_wl,b_dg → b_g1 → b_g2)
         if (built_res) return;
@@ -225,6 +285,35 @@ struct V22OptEngine::Impl {
         wl_clamp_res.add_program(device_range,
             build_elt("v22_clamp_compute.cpp", 3, 0, A(b_vnew), A(b_lo), A(b_hi), A(b_lo), A(b_lo), A(b_v)));
         built_res = true;
+    }
+
+    // No-host line-search programs. combine doubles as: copy (out = a + 0*b) and
+    // scalar-add diff (out = a + (-1)*b = a-b). nesterov_trial reads the g_k snapshot
+    // and writes the UNCOMMITTED b_vnew/b_unew (clamp via build_all's wl_clamp → b_vclamp).
+    void build_nohost() {
+        build_all_resident();   // also gives build_all (combine/precond/clamp)
+        build_stepsize();       // the ss/sy/yy reduction over b_s,b_y
+        if (built_nohost) return;
+        auto A = [](std::shared_ptr<MeshBuffer>& b) { return (uint32_t)b->address(); };
+        upload_scalar(s_neg1, -1.0f);  upload_scalar(s_zero, 0.0f);  Finish(*cq);
+        // snapshot g_k: b_g_k = b_g2 + 0*b_g2
+        wl_snap_gk.add_program(device_range,
+            build_elt("v22_gradcombine_compute.cpp", 2, 1, A(b_g2), A(b_g2), A(b_g2), A(s_zero), A(s_zero), A(b_g_k)));
+        // dv = v_kp1 - v_k  (b_vclamp - b_v) → b_s
+        wl_diff_v.add_program(device_range,
+            build_elt("v22_gradcombine_compute.cpp", 2, 1, A(b_vclamp), A(b_v), A(b_vclamp), A(s_neg1), A(s_neg1), A(b_s)));
+        // dg = g_kp1 - g_k  (b_g2 - b_g_k) → b_y
+        wl_diff_g.add_program(device_range,
+            build_elt("v22_gradcombine_compute.cpp", 2, 1, A(b_g2), A(b_g_k), A(b_g2), A(s_neg1), A(s_neg1), A(b_y)));
+        // trial nesterov: v_k=b_v, g=b_g_k(snapshot), u=b_uprev → u_new=b_unew, v_new=b_vnew (uncommitted)
+        wl_nesterov_trial.add_program(device_range,
+            build_nesterov(A(b_v), A(b_g_k), A(b_uprev), A(s_alpha), A(s_coef), A(b_unew), A(b_vnew)));
+        // commit: b_v <- b_vclamp ; b_uprev <- b_unew  (copy via combine +0*)
+        wl_commit_v.add_program(device_range,
+            build_elt("v22_gradcombine_compute.cpp", 2, 1, A(b_vclamp), A(b_vclamp), A(b_vclamp), A(s_zero), A(s_zero), A(b_v)));
+        wl_commit_u.add_program(device_range,
+            build_elt("v22_gradcombine_compute.cpp", 2, 1, A(b_unew), A(b_unew), A(b_unew), A(s_zero), A(s_zero), A(b_uprev)));
+        built_nohost = true;
     }
 };
 
@@ -247,12 +336,12 @@ void V22OptEngine::prewarm() {
     // Dummy launch to JIT all four programs.
     std::vector<float> z(impl_->n_elems, 0.0f);
     OptTiming t;
-    step(z.data(), z.data(), z.data(), z.data(), 0.0f, 0.0f, 0.0f, z.data(), z.data(), &t);
+    step(z.data(), z.data(), z.data(), z.data(), 0.0f, 0.0f, 0.0f, 1.0f, z.data(), z.data(), &t);
 }
 
 void V22OptEngine::step(const float* wl_grad, const float* density_grad,
                         const float* v_k, const float* u_prev,
-                        float alpha, float coef, float density_weight,
+                        float step_size, float coef, float density_weight, float precond_alpha,
                         float* u_new, float* v_new,
                         OptTiming* timing_out) {
     auto& I = *impl_;
@@ -263,8 +352,8 @@ void V22OptEngine::step(const float* wl_grad, const float* density_grad,
     I.upload(I.b_v,  v_k);
     I.upload(I.b_uprev, u_prev);
     I.upload_scalar(I.s_dw,    density_weight);
-    I.upload_scalar(I.s_adw,   alpha * density_weight);
-    I.upload_scalar(I.s_alpha, alpha);
+    I.upload_scalar(I.s_adw,   precond_alpha * density_weight);
+    I.upload_scalar(I.s_alpha, step_size);
     I.upload_scalar(I.s_coef,  coef);
     Finish(*I.cq);
     double h2d = ms_since(t0);
@@ -300,7 +389,7 @@ void V22OptEngine::set_pos(const float* v_init) {
 }
 
 void V22OptEngine::step_resident(const float* wl_grad, const float* density_grad,
-                                 float alpha, float coef, float density_weight,
+                                 float step_size, float coef, float density_weight, float precond_alpha,
                                  OptTiming* timing_out) {
     auto& I = *impl_;
     I.build_all_resident();
@@ -308,8 +397,8 @@ void V22OptEngine::step_resident(const float* wl_grad, const float* density_grad
     I.upload(I.b_wl, wl_grad);
     I.upload(I.b_dg, density_grad);
     I.upload_scalar(I.s_dw,    density_weight);
-    I.upload_scalar(I.s_adw,   alpha * density_weight);
-    I.upload_scalar(I.s_alpha, alpha);
+    I.upload_scalar(I.s_adw,   precond_alpha * density_weight);
+    I.upload_scalar(I.s_alpha, step_size);
     I.upload_scalar(I.s_coef,  coef);
     Finish(*I.cq);
     double h2d = ms_since(t0);
@@ -332,6 +421,136 @@ void V22OptEngine::step_resident(const float* wl_grad, const float* density_grad
 
 void V22OptEngine::get_pos(float* out) {
     impl_->download(impl_->b_v, out);
+}
+
+void V22OptEngine::stepsize_sums(const float* s, const float* y,
+                                 double* ss, double* sy, double* yy) {
+    auto& I = *impl_;
+    I.build_stepsize();
+    I.upload(I.b_s, s);   // interleave + zero-pad tail (pad=0 contributes 0 to the sums)
+    I.upload(I.b_y, y);
+    Finish(*I.cq);
+    EnqueueMeshWorkload(*I.cq, I.wl_stepsize, false);
+    Finish(*I.cq);
+    std::vector<float> partials((size_t)I.nc_all * 3u * TILE_ELEMS, 0.0f);
+    EnqueueReadMeshBuffer(*I.cq, partials, I.b_ssout, true);
+    double a0 = 0.0, a1 = 0.0, a2 = 0.0;
+    for (int c = 0; c < I.nc_all; ++c) {
+        if (I.ss_core_nt[c] == 0) continue;  // empty-core partials are garbage
+        const size_t base = (size_t)c * 3u * TILE_ELEMS;
+        for (uint32_t i = 0; i < TILE_ELEMS; ++i) {
+            a0 += partials[base + 0 * TILE_ELEMS + i];
+            a1 += partials[base + 1 * TILE_ELEMS + i];
+            a2 += partials[base + 2 * TILE_ELEMS + i];
+        }
+    }
+    if (ss) *ss = a0;
+    if (sy) *sy = a1;
+    if (yy) *yy = a2;
+}
+
+void V22OptEngine::combine_precond_ondevice(const float* wl_grad,
+                                            float density_weight, float precond_alpha) {
+    auto& I = *impl_;
+    I.build_all();                 // combine + precond programs
+    I.upload(I.b_wl, wl_grad);     // raw wirelength grad (the allowed h2d)
+    I.upload_scalar(I.s_dw,  -density_weight);                 // combine: g1 = wl + (-dw)*b_dg = wl - dw*force
+    I.upload_scalar(I.s_adw, precond_alpha * density_weight);  // precond divisor: max(pw + a*dw*area, 1)
+    Finish(*I.cq);
+    EnqueueMeshWorkload(*I.cq, I.wl_combine, false);   // b_wl, b_dg(resident) -> b_g1
+    EnqueueMeshWorkload(*I.cq, I.wl_precond, false);   // b_g1, b_pw, b_area -> b_g2
+    Finish(*I.cq);
+}
+
+void V22OptEngine::get_precond_grad(float* out) {
+    impl_->download(impl_->b_g2, out);
+}
+
+// ── No-host line-search loop ──
+void V22OptEngine::snapshot_precond_grad() {
+    auto& I = *impl_; I.build_nohost();
+    EnqueueMeshWorkload(*I.cq, I.wl_snap_gk, false);   // b_g_k <- b_g2
+    Finish(*I.cq);
+}
+
+void V22OptEngine::nesterov_clamp_trial(float step_size, float coef) {
+    auto& I = *impl_; I.build_nohost();
+    I.upload_scalar(I.s_alpha, step_size);
+    I.upload_scalar(I.s_coef,  coef);
+    Finish(*I.cq);
+    EnqueueMeshWorkload(*I.cq, I.wl_nesterov_trial, false);  // b_v,b_g_k,b_uprev -> b_unew,b_vnew
+    EnqueueMeshWorkload(*I.cq, I.wl_clamp,          false);  // b_vnew -> b_vclamp (v_k/u_k intact)
+    Finish(*I.cq);
+}
+
+void V22OptEngine::linesearch_sums(double* ss, double* yy) {
+    auto& I = *impl_; I.build_nohost();
+    EnqueueMeshWorkload(*I.cq, I.wl_diff_v,   false);   // b_s = v_kp1 - v_k
+    EnqueueMeshWorkload(*I.cq, I.wl_diff_g,   false);   // b_y = g_kp1 - g_k
+    EnqueueMeshWorkload(*I.cq, I.wl_stepsize, false);   // partials of s·s, s·y, y·y
+    Finish(*I.cq);
+    std::vector<float> partials((size_t)I.nc_all * 3u * TILE_ELEMS, 0.0f);
+    EnqueueReadMeshBuffer(*I.cq, partials, I.b_ssout, true);
+    double a0 = 0.0, a2 = 0.0;   // a0 = Σ dv·dv, a2 = Σ dg·dg
+    for (int c = 0; c < I.nc_all; ++c) {
+        if (I.ss_core_nt[c] == 0) continue;
+        const size_t base = (size_t)c * 3u * TILE_ELEMS;
+        for (uint32_t i = 0; i < TILE_ELEMS; ++i) {
+            a0 += partials[base + 0 * TILE_ELEMS + i];
+            a2 += partials[base + 2 * TILE_ELEMS + i];
+        }
+    }
+    if (ss) *ss = a0;
+    if (yy) *yy = a2;
+}
+
+void V22OptEngine::commit_trial() {
+    auto& I = *impl_; I.build_nohost();
+    EnqueueMeshWorkload(*I.cq, I.wl_commit_v, false);   // b_v <- b_vclamp
+    EnqueueMeshWorkload(*I.cq, I.wl_commit_u, false);   // b_uprev <- b_unew
+    Finish(*I.cq);
+}
+
+void V22OptEngine::get_trial_pos(float* out) {
+    impl_->download(impl_->b_vclamp, out);
+}
+
+// ── On-device density_grad: the on-chip unsort writes b_dg directly ──
+uint32_t V22OptEngine::density_grad_address() const {
+    return (uint32_t)impl_->b_dg->address();
+}
+uint32_t V22OptEngine::density_grad_num_tiles() const {
+    return impl_->n_tiles_total;
+}
+
+void V22OptEngine::step_resident_ondevice_grad(const float* wl_grad,
+                                               float step_size, float coef, float density_weight, float precond_alpha,
+                                               OptTiming* timing_out) {
+    auto& I = *impl_;
+    I.build_all_resident();
+    auto t0 = hrclock::now();
+    I.upload(I.b_wl, wl_grad);            // wl_grad still host-supplied; density_grad already in b_dg (on-chip unsort)
+    I.upload_scalar(I.s_dw,    density_weight);
+    I.upload_scalar(I.s_adw,   precond_alpha * density_weight);
+    I.upload_scalar(I.s_alpha, step_size);
+    I.upload_scalar(I.s_coef,  coef);
+    Finish(*I.cq);
+    double h2d = ms_since(t0);
+
+    auto t1 = hrclock::now();
+    EnqueueMeshWorkload(*I.cq, I.wl_combine,      false);
+    EnqueueMeshWorkload(*I.cq, I.wl_precond,      false);
+    EnqueueMeshWorkload(*I.cq, I.wl_nesterov_res, false);  // u in-place → b_uprev
+    EnqueueMeshWorkload(*I.cq, I.wl_clamp_res,    false);  // pos in-place → b_v
+    Finish(*I.cq);
+    double comp = ms_since(t1);
+
+    if (timing_out) {
+        timing_out->h2d_ms = h2d;
+        timing_out->compute_ms = comp;
+        timing_out->d2h_ms = 0.0;
+        timing_out->total_ms = ms_since(t0);
+    }
 }
 
 }  // namespace v22

@@ -1,0 +1,20 @@
+V22_NOHOST=drive sweep start 11:26  configs: adaptec1_512 adaptec1_1024 adaptec1_2048 adaptec2_512 adaptec2_1024 adaptec2_2048 adaptec3_512 adaptec3_1024 adaptec3_2048 bigblue1_512 bigblue1_1024 bigblue1_2048 bigblue2_512 bigblue2_1024 bigblue2_2048 bigblue3_512 bigblue3_1024 bigblue3_2048
+=== adaptec1_512 attempts=1 overflow=0.06936851888895035 hpwl=70324640.0 converged=YES
+=== adaptec1_1024 attempts=1 overflow=0.06895176321268082 hpwl=70941256.0 converged=YES
+=== adaptec1_2048 attempts=1 overflow=0.06887401640415192 hpwl=71388992.0 converged=YES
+=== adaptec2_512 attempts=1 overflow=0.06959119439125061 hpwl=79216848.0 converged=YES
+=== adaptec2_1024 attempts=1 overflow=0.06956834346055984 hpwl=79611448.0 converged=YES
+=== adaptec2_2048 attempts=1 overflow=0.06922751665115356 hpwl=80772328.0 converged=YES
+=== adaptec3_512 attempts=1 overflow=0.06602336466312408 hpwl=186444816.0 converged=YES
+=== adaptec3_1024 attempts=1 overflow=0.06919179856777191 hpwl=186014736.0 converged=YES
+=== adaptec3_2048 attempts=1 overflow=0.08185169845819473 hpwl=192261344.0 converged=NO (DEFERRED baseline)
+=== bigblue1_512 attempts=1 overflow=0.06751179695129395 hpwl=87430720.0 converged=YES
+=== bigblue1_1024 attempts=1 overflow=0.06969635933637619 hpwl=95554976.0 converged=YES
+=== bigblue1_2048 attempts=1 overflow=0.06896838545799255 hpwl=88502168.0 converged=YES
+=== bigblue2_512 attempts=1 overflow=0.06611102819442749 hpwl=130970352.0 converged=YES
+=== bigblue2_1024 attempts=1 overflow=0.069395050406456 hpwl=132281032.0 converged=YES
+=== bigblue2_2048 attempts=1 overflow=0.07484649866819382 hpwl=134149536.0 converged=NO (DEFERRED baseline)
+=== bigblue3_512 attempts=1 overflow=0.06928301602602005 hpwl=298534816.0 converged=YES
+=== bigblue3_1024 attempts=1 overflow=0.06923768669366837 hpwl=295085088.0 converged=YES
+=== bigblue3_2048 attempts=1 overflow=0.06954044103622437 hpwl=295510432.0 converged=YES
+VERIFYMATRIX-NOHOST DONE 12:13
